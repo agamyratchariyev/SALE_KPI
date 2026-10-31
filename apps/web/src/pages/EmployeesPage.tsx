@@ -262,10 +262,12 @@ function EmployeeRow({
       </td>
       {canManage ? (
         <>
-          <td className="hidden py-2 pr-3 text-sm text-slate-500 xl:table-cell dark:text-slate-400">
-            {employee.email ?? '—'}
+          <td className="hidden max-w-[14rem] py-2 pr-3 text-sm text-slate-500 2xl:table-cell dark:text-slate-400">
+            <span className="block truncate" title={employee.email ?? undefined}>
+              {employee.email ?? '—'}
+            </span>
           </td>
-          <td className="hidden py-2 pr-3 text-sm text-slate-500 xl:table-cell dark:text-slate-400">
+          <td className="hidden whitespace-nowrap py-2 pr-3 text-sm text-slate-500 2xl:table-cell dark:text-slate-400">
             {employee.phoneNumber ?? '—'}
           </td>
         </>
@@ -877,11 +879,12 @@ export function EmployeesPage() {
                   <th className="py-2 pr-3 font-medium">{t('employeeCard.defaultStore')}</th>
                   {canManage ? (
                     <>
-                      {/* Below xl the row is too narrow; the employee card has both. */}
-                      <th className="hidden py-2 pr-3 font-medium xl:table-cell">
-                        {t('employeeForm.emailLabel')}
+                      {/* Below 2xl the row does not fit (at 1280 px it scrolled sideways);
+                          the employee card has both. */}
+                      <th className="hidden py-2 pr-3 font-medium 2xl:table-cell">
+                        {t('employeeCard.email')}
                       </th>
-                      <th className="hidden py-2 pr-3 font-medium xl:table-cell">
+                      <th className="hidden py-2 pr-3 font-medium 2xl:table-cell">
                         {t('employees.columnPhone')}
                       </th>
                     </>

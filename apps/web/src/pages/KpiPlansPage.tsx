@@ -378,7 +378,8 @@ function PlanSalaryCell({ salary }: { salary: KpiPlanSalary | null }) {
         currency={salary.currency}
         className="whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-slate-100"
       />
-      <span className="whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400">
+      {/* One line from xl; below it the breakdown may wrap so the table fits at 1024 px. */}
+      <span className="text-right text-[11px] text-slate-500 xl:whitespace-nowrap dark:text-slate-400">
         {t('kpiPlans.salaryFixed')}{' '}
         <SecretAmount value={salary.fixedAmount} currency={salary.currency} showCurrency={false} />
         {' · '}
@@ -502,6 +503,9 @@ function PlanSalarySummary({
             </dl>
           </div>
         ))
+      ) : summary.planCount === 0 ? (
+        // The search matched nothing; the card stays (desktop) so the layout does not jump.
+        <p className="mt-2 text-2xl font-semibold text-slate-400 dark:text-slate-500">—</p>
       ) : (
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           {t('kpiPlans.salaryNone')}
@@ -535,6 +539,7 @@ interface PeriodPanelProps {
   closing: boolean;
   reopening: boolean;
   exporting: boolean;
+  className?: string;
 }
 
 /**
@@ -557,6 +562,7 @@ function PeriodPanel({
   closing,
   reopening,
   exporting,
+  className = '',
 }: PeriodPanelProps) {
   const { t, locale } = useTranslation();
   const isOpen = period.status === 'open';
@@ -569,7 +575,7 @@ function PeriodPanel({
   return (
     <section
       aria-label={t('kpiPlans.periodLabel')}
-      className="mx-4 mb-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+      className={`flex flex-col rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 ${className}`}
     >
       <div className="flex items-center gap-2">
         <select
@@ -609,7 +615,8 @@ function PeriodPanel({
         </p>
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3">
+      {/* mb-auto: on desktop the card is as tall as the pay summary; the actions stay at its foot. */}
+      <div className="mt-2 flex items-center justify-between gap-3 lg:mb-auto">
         <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
           {t('kpiPlans.periodPlans', { count: formatNumber(period.assignmentCount, locale) })}
           {period.missingTargetCount > 0 ? (
@@ -971,6 +978,8 @@ export function KpiPlansPage() {
   }
 
   const isOpenPeriod = period?.status === 'open';
+  // The pay summary has a column beside the period card once the month has plans.
+  const summaryColumn = (period?.assignmentCount ?? 0) > 0;
 
   return (
     <AppShell
@@ -1008,82 +1017,98 @@ export function KpiPlansPage() {
           </div>
         ) : null}
 
-        {period ? (
-          <PeriodPanel
-            periods={periods}
-            period={period}
-            previousPeriod={previousPeriod}
-            onSelect={selectPeriod}
-            onNewPeriod={() => setNewPeriodOpen(true)}
-            onCalculate={() => calculateMutation.mutate(period.id)}
-            onCopy={() => void copyFromPrevious()}
-            onClose={closePeriod}
-            onReopen={reopenPeriod}
-            onExport={exportPeriod}
-            calculating={calculateMutation.isPending}
-            copying={copyMutation.isPending}
-            closing={closeMutation.isPending}
-            reopening={reopenMutation.isPending}
-            exporting={exportMutation.isPending}
-          />
-        ) : null}
-
-        {notice ? (
-          <p
-            role="status"
-            className={`mx-4 mb-3 rounded-lg px-3 py-2 text-sm ${
-              notice.tone === 'success'
-                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                : 'bg-red-500/10 text-red-600 dark:text-red-400'
-            }`}
-          >
-            {notice.text}
-          </p>
-        ) : null}
-
-        {period ? (
-          <div className="flex flex-col gap-3 px-4 pb-3 lg:flex-row lg:items-start">
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:flex-1">
-              <input
-                type="search"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder={t('kpiPlans.searchPlaceholder')}
-                aria-label={t('kpiPlans.searchPlaceholder')}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 sm:max-w-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
+        {/* Phone: period, notice, search, pay summary, one under the other (DOM order).
+            Desktop: period and pay summary share the first row at the same height; the notice
+            and the search run full width under them, the search right above the table. */}
+        {period || notice ? (
+          <div className="flex flex-col gap-3 px-4 pb-3 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">
+            {period ? (
+              <PeriodPanel
+                periods={periods}
+                period={period}
+                previousPeriod={previousPeriod}
+                onSelect={selectPeriod}
+                onNewPeriod={() => setNewPeriodOpen(true)}
+                onCalculate={() => calculateMutation.mutate(period.id)}
+                onCopy={() => void copyFromPrevious()}
+                onClose={closePeriod}
+                onReopen={reopenPeriod}
+                onExport={exportPeriod}
+                calculating={calculateMutation.isPending}
+                copying={copyMutation.isPending}
+                closing={closeMutation.isPending}
+                reopening={reopenMutation.isPending}
+                exporting={exportMutation.isPending}
+                className={`lg:order-1 ${summaryColumn ? '' : 'lg:col-span-2'}`}
               />
-              {templateId ? (
-                <span className="inline-flex min-h-[44px] max-w-full items-center gap-1 self-start rounded-full bg-emerald-400/15 pl-3 text-sm font-medium text-emerald-700 sm:self-auto dark:text-emerald-300">
-                  <span className="truncate">
-                    {t('kpiPlans.templateFilter', { name: filterTemplateName })}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={clearTemplateFilter}
-                    aria-label={t('kpiPlans.clearTemplateFilter')}
-                    title={t('kpiPlans.clearTemplateFilter')}
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition hover:bg-emerald-400/20"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      className="h-4 w-4"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
+            ) : null}
+
+            {notice ? (
+              <p
+                role="status"
+                className={`rounded-lg px-3 py-2 text-sm lg:order-3 lg:col-span-2 ${
+                  notice.tone === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                }`}
+              >
+                {notice.text}
+              </p>
+            ) : null}
+
+            {period ? (
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:order-4 lg:col-span-2">
+                <input
+                  type="search"
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder={t('kpiPlans.searchPlaceholder')}
+                  aria-label={t('kpiPlans.searchPlaceholder')}
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 sm:max-w-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"
+                />
+                {templateId ? (
+                  <span className="inline-flex min-h-[44px] max-w-full items-center gap-1 self-start rounded-full bg-emerald-400/15 pl-3 text-sm font-medium text-emerald-700 sm:self-auto dark:text-emerald-300">
+                    <span className="truncate">
+                      {t('kpiPlans.templateFilter', { name: filterTemplateName })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearTemplateFilter}
+                      aria-label={t('kpiPlans.clearTemplateFilter')}
+                      title={t('kpiPlans.clearTemplateFilter')}
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition hover:bg-emerald-400/20"
                     >
-                      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-                    </svg>
-                  </button>
-                </span>
-              ) : null}
-            </div>
-            {firstPage && firstPage.total > 0 ? (
-              <PlanSalarySummary
-                summary={firstPage.salarySummary}
-                periodOpen={isOpenPeriod}
-                className="lg:w-[22rem] lg:flex-none"
-              />
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="h-4 w-4"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
+                        <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            {summaryColumn ? (
+              firstPage ? (
+                <PlanSalarySummary
+                  summary={firstPage.salarySummary}
+                  periodOpen={isOpenPeriod}
+                  // A search that matches nothing hides it on the phone, as before.
+                  className={`lg:order-2 ${firstPage.total > 0 ? '' : 'hidden lg:block'}`}
+                />
+              ) : (
+                // Holds the column while the list loads, so the period card does not jump.
+                <div
+                  aria-hidden="true"
+                  className="hidden rounded-2xl border border-slate-200 bg-white lg:order-2 lg:block dark:border-slate-800 dark:bg-slate-900"
+                />
+              )
             ) : null}
           </div>
         ) : null}
@@ -1173,7 +1198,7 @@ export function KpiPlansPage() {
                         </div>
                       </td>
                       <td
-                        className={`py-2.5 pr-3 text-right text-sm tabular-nums ${
+                        className={`whitespace-nowrap py-2.5 pr-3 text-right text-sm tabular-nums ${
                           plan.targetCount < plan.itemCount
                             ? 'text-amber-600 dark:text-amber-400'
                             : 'text-slate-700 dark:text-slate-300'
@@ -1192,7 +1217,7 @@ export function KpiPlansPage() {
                             score={plan.totalScore}
                             name={employeeName(plan.employee)}
                             compact
-                            className="ml-auto w-36"
+                            className="ml-auto w-28 xl:w-36"
                           />
                         )}
                       </td>
