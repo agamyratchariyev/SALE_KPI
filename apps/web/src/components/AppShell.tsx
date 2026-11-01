@@ -302,10 +302,12 @@ export function AppShell({
         </Drawer>
       </div>
 
-      {/* Main Content: the page's scroll area on desktop; an open modal stops it (useScrollLock). */}
+      {/* Main Content: the page's scroll area on desktop; an open modal stops it (useScrollLock).
+          `relative` keeps absolute children (sr-only labels deep in a long list) inside it;
+          without it they hang off <body> and give the document a second scrollbar. */}
       <div
         data-page-scroll
-        className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto lg:[scrollbar-gutter:stable]"
+        className="min-w-0 flex-1 lg:relative lg:h-screen lg:overflow-y-auto lg:[scrollbar-gutter:stable]"
       >
         <header className="sticky top-0 z-10 flex h-14 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:hidden">
           <button
