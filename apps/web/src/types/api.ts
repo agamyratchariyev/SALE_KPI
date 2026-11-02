@@ -718,6 +718,10 @@ export interface StoreDashboardMonth {
   previous: number | null;
   /** Only for a finished month with a positive value the year before. */
   growthPercent: number | null;
+  /** The month before (January: December of the year before); only for a finished month. */
+  previousMonth: number | null;
+  /** Change from the month before; only for a finished month with a positive month before. */
+  previousMonthGrowthPercent: number | null;
 }
 
 export interface StoreDashboardSummary {

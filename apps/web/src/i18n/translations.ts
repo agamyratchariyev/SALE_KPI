@@ -842,6 +842,12 @@ interface TranslationShape {
     monthAria: string;
     month: string;
     change: string;
+    /** The row of column names that sorts the month list on a phone. */
+    sort: string;
+    /** The switch of what the chart writes above the bars. */
+    changeBasis: string;
+    vsPreviousYear: string;
+    vsPreviousMonth: string;
     storesTitle: string;
     storesHint: string;
     singleStore: string;
@@ -1794,6 +1800,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} {current}, {previousYear} {previous}',
       month: 'Ay',
       change: 'Değişim',
+      sort: 'Sıralama',
+      changeBasis: 'Çubukların üstündeki değişim',
+      vsPreviousYear: 'Önceki yıla göre',
+      vsPreviousMonth: 'Önceki aya göre',
       storesTitle: 'Mağaza karşılaştırması',
       storesHint: 'Karşılaştırılan aylardaki artışa göre sıralı.',
       singleStore: 'Bu yıllarda yalnız bir mağazanın satışı var.',
@@ -2744,6 +2754,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} {current}, {previousYear} {previous}',
       month: 'Month',
       change: 'Change',
+      sort: 'Sort',
+      changeBasis: 'Change shown above the bars',
+      vsPreviousYear: 'vs previous year',
+      vsPreviousMonth: 'vs previous month',
       storesTitle: 'Store comparison',
       storesHint: 'Ranked by growth over the compared months.',
       singleStore: 'Only one store has sales in these years.',
@@ -3696,6 +3710,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} — {current}, {previousYear} — {previous}',
       month: 'Месяц',
       change: 'Изменение',
+      sort: 'Сортировка',
+      changeBasis: 'Изменение над столбцами',
+      vsPreviousYear: 'К прошлому году',
+      vsPreviousMonth: 'К прошлому месяцу',
       storesTitle: 'Сравнение магазинов',
       storesHint: 'По росту за сравниваемые месяцы.',
       singleStore: 'В эти годы продажи есть только у одного магазина.',
@@ -4651,6 +4669,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} {current}, {previousYear} {previous}',
       month: 'Aý',
       change: 'Üýtgeşme',
+      sort: 'Tertip',
+      changeBasis: 'Sütünleriň üstündäki üýtgeşme',
+      vsPreviousYear: 'Öňki ýyla görä',
+      vsPreviousMonth: 'Öňki aýa görä',
       storesTitle: 'Dükanlaryň deňeşdirmesi',
       storesHint: 'Deňeşdirilýän aýlardaky ösüşe görä tertiplenen.',
       singleStore: 'Bu ýyllarda diňe bir dükanyň satuwy bar.',
