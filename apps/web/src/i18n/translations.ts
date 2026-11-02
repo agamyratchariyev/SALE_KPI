@@ -129,6 +129,7 @@ interface TranslationShape {
     themeLight: string;
     themeDark: string;
     themeSystem: string;
+    version: string;
   };
   sessions: {
     title: string;
@@ -997,6 +998,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Açık',
       themeDark: 'Koyu',
       themeSystem: 'Sistem',
+      version: 'Sürüm v{version}',
     },
     sessions: {
       title: 'Oturumlarım',
@@ -1906,6 +1908,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Light',
       themeDark: 'Dark',
       themeSystem: 'System',
+      version: 'Version v{version}',
     },
     sessions: {
       title: 'My sessions',
@@ -2812,6 +2815,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Светлая',
       themeDark: 'Тёмная',
       themeSystem: 'Системная',
+      version: 'Версия v{version}',
     },
     sessions: {
       title: 'Мои сессии',
@@ -3720,6 +3724,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Açyk',
       themeDark: 'Goýy',
       themeSystem: 'Ulgam',
+      version: 'Wersiýa v{version}',
     },
     sessions: {
       title: 'Meniň sessiýalarym',
