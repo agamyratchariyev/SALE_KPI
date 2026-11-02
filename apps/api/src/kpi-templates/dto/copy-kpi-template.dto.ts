@@ -2,6 +2,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
+import { BulkIdsDto } from '../../common/dto/bulk.dto.js';
+import { TargetChangePercent } from '../../kpi-assignments/dto/target-change-percent.js';
+
 export class CopyKpiTemplateDto {
   @ApiPropertyOptional({
     type: String,
@@ -16,4 +19,13 @@ export class CopyKpiTemplateDto {
   @MinLength(1)
   @MaxLength(200)
   name?: string;
+
+  /** Applies to the template's default targets. */
+  @TargetChangePercent()
+  targetChangePercent?: number;
+}
+
+export class BulkCopyKpiTemplatesDto extends BulkIdsDto {
+  @TargetChangePercent()
+  targetChangePercent?: number;
 }

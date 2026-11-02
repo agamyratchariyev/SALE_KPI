@@ -24,11 +24,12 @@ Son toplu doğrulama: **2026-09-16** (tüm repository kaynak taraması).
 | [DOCKER.md](DOCKER.md)                     | Compose, image, port, ortam değişkeni, n8n runtime           |
 | [N8N.md](N8N.md)                           | n8n workflow'ları: her akşamki KPI maili (`n8n/kpi-mail-send`) |
 | [TIGER_DATA.md](TIGER_DATA.md)             | Tiger kaynağı, okunan tablo/alanlar, KPI ölçümlerinin hesabı |
-| [REPORTS.md](REPORTS.md)                   | KPI hedef öneri raporları (`report_<KPI kodu>` view'ları)    |
-| [DECISIONS.md](DECISIONS.md)               | Kalıcı mimari kararlar (ADR-001…ADR-063)                     |
+| [REPORTS.md](REPORTS.md)                   | KPI hedef öneri raporları (`report_<KPI kodu>` view'ları); başka Tiger kurulumu için `sql/kpi-report-views.sql` |
+| [DECISIONS.md](DECISIONS.md)               | Kalıcı mimari kararlar (ADR-001…ADR-069)                     |
 | [AUDIT-2026-09-16.md](AUDIT-2026-09-16.md) | Bilinen kod/belge tutarsızlıkları ve açık teknik borç        |
 | [CHANGELOG.md](CHANGELOG.md)               | Tarih bazlı değişiklik günlüğü                               |
 | [AI_GUIDE.md](AI_GUIDE.md)                 | Görev yöntemi ve kontrol listesi                             |
+| [KPI_TARGET_ADVISOR.md](KPI_TARGET_ADVISOR.md) | İngilizce; işletme sahibinin bir AI sohbetine yapıştırdığı hedef danışmanı: 16 KPI'ın hesabı, puan/maaş, role göre şablon ve hedef önerisi. KPI kuralı, puan ya da öneri formülü değişince güncellenir |
 
 ## Bakım kuralı
 

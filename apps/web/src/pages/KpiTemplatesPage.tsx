@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
-  bulkCopyKpiTemplates,
   bulkDeleteKpiTemplates,
   bulkSetKpiTemplatesActive,
   listKpiTemplates,
@@ -11,9 +10,11 @@ import {
 } from '../api/kpi-templates';
 import { AppShell } from '../components/AppShell';
 import { BulkActionBar, type BulkAction } from '../components/BulkActionBar';
+import { CopyKpiTemplateModal } from '../components/CopyKpiTemplateModal';
 import { RecordInfoButton } from '../components/RecordInfo';
 import { SelectCheckbox } from '../components/SelectCheckbox';
 import { StatusBadge } from '../components/StatusBadge';
+import { describeTargetChange } from '../components/TargetChange';
 import { localizeApiError } from '../i18n/api-errors';
 import { formatNumber } from '../i18n/formatters';
 import { useTranslation, type Translate } from '../i18n/locale-store';
@@ -24,7 +25,7 @@ import type { KpiTemplateSummary } from '../types/api';
 import { confirmAction } from '../store/confirm-store';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
-type BulkTemplateAction = 'copy' | 'activate' | 'deactivate' | 'delete';
+type BulkTemplateAction = 'activate' | 'deactivate' | 'delete';
 
 /** `KPI_TEMPLATE_IN_USE` names the templates a KPI plan was built from (ADR-040). */
 function describeBulkError(error: unknown, t: Translate): string {
@@ -178,6 +179,8 @@ export function KpiTemplatesPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [notice, setNotice] = useState<BulkNotice | null>(null);
+  // Copying asks how much the default targets change first (ADR-070).
+  const [copyTargets, setCopyTargets] = useState<KpiTemplateSummary[] | null>(null);
   const queryClient = useQueryClient();
 
   // Debounce so typing doesn't fire a request per keystroke.
@@ -222,10 +225,6 @@ export function KpiTemplatesPage() {
       ids: string[];
       action: BulkTemplateAction;
     }): Promise<number> => {
-      if (action === 'copy') {
-        return (await bulkCopyKpiTemplates(ids)).copies.length;
-      }
-
       if (action === 'delete') {
         return (await bulkDeleteKpiTemplates(ids)).deleted;
       }
@@ -236,13 +235,11 @@ export function KpiTemplatesPage() {
     onSuccess: (count, { action }) => {
       selection.clear();
       const key =
-        action === 'copy'
-          ? 'kpiTemplates.bulkCopied'
-          : action === 'activate'
-            ? 'kpiTemplates.bulkActivated'
-            : action === 'delete'
-              ? 'kpiTemplates.bulkDeleted'
-              : 'kpiTemplates.bulkDeactivated';
+        action === 'activate'
+          ? 'kpiTemplates.bulkActivated'
+          : action === 'delete'
+            ? 'kpiTemplates.bulkDeleted'
+            : 'kpiTemplates.bulkDeactivated';
       setNotice({ tone: 'success', text: t(key, { count: formatNumber(count, locale) }) });
     },
     onError: (error) => setNotice({ tone: 'error', text: describeBulkError(error, t) }),
@@ -276,6 +273,15 @@ export function KpiTemplatesPage() {
     bulkMutation.mutate({ action, ids: targets.map((template) => template.id) });
   }
 
+  function handleCopied(count: number, targetChangePercent: number) {
+    setCopyTargets(null);
+    selection.clear();
+    const copied = t('kpiTemplates.bulkCopied', { count: formatNumber(count, locale) });
+    const change = describeTargetChange(targetChangePercent, t, locale);
+    setNotice({ tone: 'success', text: change ? `${copied} ${change}` : copied });
+    void queryClient.invalidateQueries({ queryKey: ['kpi-templates'] });
+  }
+
   // Status actions are offered only when they change something; a mixed selection shows
   // per-action counts. Copy works for active and inactive templates alike.
   const toActivate = selectedTemplates.filter((template) => !template.isActive);
@@ -287,7 +293,10 @@ export function KpiTemplatesPage() {
       key: 'copy',
       label: t('kpiTemplates.bulkCopy'),
       tone: 'neutral',
-      onClick: () => void runBulk('copy', selectedTemplates),
+      onClick: () => {
+        setNotice(null);
+        setCopyTargets(selectedTemplates);
+      },
     },
     ...(toActivate.length > 0
       ? [
@@ -543,6 +552,16 @@ export function KpiTemplatesPage() {
         notice={notice}
         onDismissNotice={dismissNotice}
       />
+
+      {copyTargets ? (
+        <CopyKpiTemplateModal
+          templates={copyTargets}
+          onClose={() => setCopyTargets(null)}
+          onCopied={(copies, targetChangePercent) =>
+            handleCopied(copies.length, targetChangePercent)
+          }
+        />
+      ) : null}
 
       {!bulkBarVisible ? (
         <Link

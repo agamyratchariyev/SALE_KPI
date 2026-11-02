@@ -20,8 +20,19 @@ import type {
 type Currency = 'TMT' | 'USD';
 type Store = StoreDashboardResponse['stores'][number];
 type Translate = ReturnType<typeof useTranslation>['t'];
+type SortOrder = 'asc' | 'desc';
+type MonthSortKey = 'month' | 'previous' | 'current' | 'difference' | 'growth';
+/** Which change the chart writes above the bars. */
+type ChangeBasis = 'year' | 'month';
+
+interface MonthSort {
+  key: MonthSortKey;
+  order: SortOrder;
+}
 
 const CURRENCIES: Currency[] = ['TMT', 'USD'];
+const CHANGE_BASES: ChangeBasis[] = ['year', 'month'];
+const DEFAULT_MONTH_SORT: MonthSort = { key: 'month', order: 'asc' };
 const PANEL_ID = 'store-dashboard-panel';
 
 // ---------------------------------------------------------------------------
@@ -177,12 +188,71 @@ function growthTone(value: number | null): string {
   return value > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400';
 }
 
+function barPercent(value: number | null, max: number): number {
+  return value === null || value <= 0 ? 0 : Math.max(3, (value / max) * 100);
+}
+
 function barHeight(value: number | null, max: number): string {
-  return value === null || value <= 0 ? '0%' : `${String(Math.max(3, (value / max) * 100))}%`;
+  return `${String(barPercent(value, max))}%`;
 }
 
 function chartMax(months: readonly StoreDashboardMonth[]): number {
   return Math.max(1, ...months.flatMap((month) => [month.current ?? 0, month.previous ?? 0]));
+}
+
+/** This year against the year before; only for a finished month with both values. */
+function yearDifference(month: StoreDashboardMonth): number | null {
+  return month.status === 'complete' && month.current !== null && month.previous !== null
+    ? month.current - month.previous
+    : null;
+}
+
+/** This month against the month before; only for a finished month with both values. */
+function monthDifference(month: StoreDashboardMonth): number | null {
+  return month.status === 'complete' && month.current !== null && month.previousMonth !== null
+    ? month.current - month.previousMonth
+    : null;
+}
+
+function monthSortValue(month: StoreDashboardMonth, key: MonthSortKey): number | null {
+  switch (key) {
+    case 'month':
+      return month.month;
+    case 'previous':
+      return month.previous;
+    case 'current':
+      return month.current;
+    case 'difference':
+      return yearDifference(month);
+    case 'growth':
+      return month.growthPercent;
+  }
+}
+
+/** The months in the chosen order; a month without the value goes last either way. */
+function sortMonths(
+  months: readonly StoreDashboardMonth[],
+  sort: MonthSort,
+): StoreDashboardMonth[] {
+  return [...months].sort((left, right) => {
+    const a = monthSortValue(left, sort.key);
+    const b = monthSortValue(right, sort.key);
+
+    if (a === null || b === null) {
+      return a === b ? left.month - right.month : a === null ? 1 : -1;
+    }
+
+    return (sort.order === 'asc' ? a - b : b - a) || left.month - right.month;
+  });
+}
+
+/** A second click on a column turns its order round; a new value column starts largest first. */
+function nextMonthSort(sort: MonthSort, key: MonthSortKey): MonthSort {
+  if (sort.key === key) {
+    return { key, order: sort.order === 'asc' ? 'desc' : 'asc' };
+  }
+
+  return { key, order: key === 'month' ? 'asc' : 'desc' };
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +264,71 @@ function TrendArrow({ up, className = '' }: { up: boolean; className?: string })
     <svg aria-hidden="true" viewBox="0 0 12 12" className={className} fill="currentColor">
       <path d={up ? 'M6 2l4 5H2z' : 'M6 10L2 5h8z'} />
     </svg>
+  );
+}
+
+/** Both arrows of a sortable column; the one of the active order is lit. */
+function SortArrows({ order }: { order: SortOrder | null }) {
+  const tone = (lit: boolean) =>
+    lit ? 'fill-emerald-600 dark:fill-emerald-400' : 'fill-current opacity-30';
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 10 16" className="h-3.5 w-2.5 flex-shrink-0">
+      <path d="M5 1l4 5H1z" className={tone(order === 'asc')} />
+      <path d="M5 15L1 10h8z" className={tone(order === 'desc')} />
+    </svg>
+  );
+}
+
+/** A column name that sorts the months; on a right-aligned column the arrows come first. */
+function SortButton({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  align = 'left',
+}: {
+  label: string;
+  sortKey: MonthSortKey;
+  sort: MonthSort;
+  onSort: (key: MonthSortKey) => void;
+  align?: 'left' | 'right';
+}) {
+  const active = sort.key === sortKey;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex min-h-[44px] items-center gap-1 whitespace-nowrap transition hover:text-slate-900 dark:hover:text-slate-100 ${
+        align === 'right' ? 'flex-row-reverse' : ''
+      } ${active ? 'text-slate-900 dark:text-slate-100' : ''}`}
+    >
+      {label}
+      <SortArrows order={active ? sort.order : null} />
+    </button>
+  );
+}
+
+function SortableHeader({
+  align = 'left',
+  ...props
+}: {
+  label: string;
+  sortKey: MonthSortKey;
+  sort: MonthSort;
+  onSort: (key: MonthSortKey) => void;
+  align?: 'left' | 'right';
+}) {
+  const active = props.sort.key === props.sortKey;
+
+  return (
+    <th
+      aria-sort={active ? (props.sort.order === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={`px-4 font-medium ${align === 'right' ? 'text-right' : ''}`}
+    >
+      <SortButton {...props} align={align} />
+    </th>
   );
 }
 
@@ -697,6 +832,88 @@ function KpiHeader({
   );
 }
 
+interface ChangeLabelProps {
+  percent: number;
+  /** The change in the KPI's own unit; null when a value is missing. */
+  difference: string | null;
+  /** "Temmuz 2026: 178 969 TMT": what the month is compared with, then the month itself. */
+  from: string;
+  to: string;
+}
+
+/**
+ * A month's change above its bars: the arrow on a phone, with the percentage from `sm:`.
+ * Hovering it (or focusing the month) tells how much the change is and between which values.
+ */
+function ChangeLabel({
+  percent,
+  difference,
+  from,
+  to,
+  bottom,
+  align,
+}: ChangeLabelProps & { bottom: number; align: 'left' | 'center' | 'right' }) {
+  const { t, locale } = useTranslation();
+  const growth = formatGrowth(percent, locale, t);
+  const tone = percent > 0 ? 'text-emerald-300' : percent < 0 ? 'text-red-300' : 'text-slate-100';
+  // The first and last months open the tooltip inwards, so it stays on the screen.
+  const position =
+    align === 'left' ? 'left-0' : align === 'right' ? 'right-0' : 'left-1/2 -translate-x-1/2';
+
+  return (
+    <span
+      className="absolute inset-x-0 flex justify-center"
+      style={{ bottom: `calc(${String(bottom)}% + 1px)` }}
+    >
+      <span
+        className={`group/change relative inline-flex items-center gap-0.5 whitespace-nowrap p-1 text-[11px] font-semibold leading-none tabular-nums ${growthTone(percent)}`}
+      >
+        {percent === 0 ? null : <TrendArrow up={percent > 0} className="h-3 w-3" />}
+        <span className="hidden sm:inline">
+          {t('storeDashboard.percent', {
+            value: formatNumber(Math.abs(percent), locale, { maximumFractionDigits: 0 }),
+          })}
+        </span>
+        <span
+          role="tooltip"
+          className={`pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-[16rem] rounded-lg bg-slate-900 px-2.5 py-2 text-left text-[11px] font-normal leading-snug text-slate-300 shadow-lg ring-1 ring-white/10 group-hover/change:block group-focus-visible:block dark:bg-slate-800 ${position}`}
+        >
+          <span className={`block text-xs font-semibold ${tone}`}>
+            {difference === null ? growth : `${difference} · ${growth}`}
+          </span>
+          <span className="mt-1 block">{from}</span>
+          <span className="block">{to}</span>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** One change of the selected month: what it is against, the percentage and how much. */
+function ChangeLine({
+  label,
+  percent,
+  difference,
+}: {
+  label: string;
+  percent: number | null;
+  difference: string | null;
+}) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span className="text-slate-500 dark:text-slate-400">{`${label}:`}</span>
+      <GrowthBadge value={percent} />
+      {percent !== null && difference !== null ? (
+        <span className={`font-medium tabular-nums ${growthTone(percent)}`}>{difference}</span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * The months as bars, last year grey and this year green. Above the bars the change against
+ * the year before or the month before, as chosen; a month tapped shows both.
+ */
 function MonthlyChart({
   kpi,
   comparison,
@@ -712,10 +929,42 @@ function MonthlyChart({
 }) {
   const { t, locale } = useTranslation();
   const [selected, setSelected] = useState<number | null>(null);
+  const [basis, setBasis] = useState<ChangeBasis>('year');
   const months = comparison.months;
   const max = chartMax(months);
   const selectedMonth = months.find((month) => month.month === selected) ?? null;
   const value = (amount: number | null) => formatValue(amount, kpi, currency, locale, t);
+  const difference = (amount: number | null) =>
+    amount === null ? null : formatDifference(amount, kpi, currency, locale, t);
+  const label = (month: number, ofYear: number) => `${monthName(month, locale)} ${String(ofYear)}`;
+  // Without last year (2026 today) there is nothing to compare: the month before is shown.
+  const hasYearGrowth = months.some((month) => month.growthPercent !== null);
+  const shownBasis: ChangeBasis = hasYearGrowth ? basis : 'month';
+
+  /** The change written above a month's bars, with the two values it compares. */
+  function changeOf(month: StoreDashboardMonth): ChangeLabelProps | null {
+    if (shownBasis === 'year') {
+      return month.growthPercent === null
+        ? null
+        : {
+            percent: month.growthPercent,
+            difference: difference(yearDifference(month)),
+            from: `${label(month.month, previousYear)}: ${value(month.previous)}`,
+            to: `${label(month.month, year)}: ${value(month.current)}`,
+          };
+    }
+
+    const before = month.month === 1 ? label(12, year - 1) : label(month.month - 1, year);
+
+    return month.previousMonthGrowthPercent === null
+      ? null
+      : {
+          percent: month.previousMonthGrowthPercent,
+          difference: difference(monthDifference(month)),
+          from: `${before}: ${value(month.previousMonth)}`,
+          to: `${label(month.month, year)}: ${value(month.current)}`,
+        };
+  }
 
   return (
     <Card className="!p-3 sm:!p-4">
@@ -726,21 +975,64 @@ function MonthlyChart({
         <Legend year={year} previousYear={previousYear} />
       </div>
       <div
+        role="group"
+        aria-label={t('storeDashboard.changeBasis')}
+        className="mt-2 flex h-11 w-full rounded-full border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900 sm:inline-flex sm:w-auto"
+      >
+        {CHANGE_BASES.map((option) => {
+          const unavailable = option === 'year' && !hasYearGrowth;
+
+          return (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={shownBasis === option}
+              disabled={unavailable}
+              title={unavailable ? t('storeDashboard.noGrowth') : undefined}
+              onClick={() => setBasis(option)}
+              className={`flex-1 whitespace-nowrap rounded-full px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none ${
+                shownBasis === option
+                  ? 'bg-emerald-600 text-white dark:bg-emerald-400 dark:text-slate-950'
+                  : 'text-slate-600 hover:text-emerald-600 dark:text-slate-300'
+              }`}
+            >
+              {option === 'year'
+                ? t('storeDashboard.vsPreviousYear')
+                : t('storeDashboard.vsPreviousMonth')}
+            </button>
+          );
+        })}
+      </div>
+      <div
         aria-live="polite"
-        className="mt-1 flex min-h-[24px] flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-300"
+        className="mt-2 flex min-h-[24px] flex-col gap-1 text-xs text-slate-600 dark:text-slate-300"
       >
         {selectedMonth ? (
           <>
-            <span className="font-semibold">{monthName(selectedMonth.month, locale)}</span>
-            <span className="tabular-nums">{`${String(year)}: ${value(selectedMonth.current)}`}</span>
-            <span className="tabular-nums text-slate-500 dark:text-slate-400">
-              {`${String(previousYear)}: ${value(selectedMonth.previous)}`}
-            </span>
-            {selectedMonth.status === 'inProgress' ? (
-              <span className="text-slate-500">{t('storeDashboard.inProgressShort')}</span>
-            ) : (
-              <GrowthBadge value={selectedMonth.growthPercent} />
-            )}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-semibold">{monthName(selectedMonth.month, locale)}</span>
+              <span className="tabular-nums">{`${String(year)}: ${value(selectedMonth.current)}`}</span>
+              <span className="tabular-nums text-slate-500 dark:text-slate-400">
+                {`${String(previousYear)}: ${value(selectedMonth.previous)}`}
+              </span>
+              {selectedMonth.status === 'inProgress' ? (
+                <span className="text-slate-500">{t('storeDashboard.inProgressShort')}</span>
+              ) : null}
+            </p>
+            {selectedMonth.status === 'complete' ? (
+              <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <ChangeLine
+                  label={t('storeDashboard.vsPreviousYear')}
+                  percent={selectedMonth.growthPercent}
+                  difference={difference(yearDifference(selectedMonth))}
+                />
+                <ChangeLine
+                  label={t('storeDashboard.vsPreviousMonth')}
+                  percent={selectedMonth.previousMonthGrowthPercent}
+                  difference={difference(monthDifference(selectedMonth))}
+                />
+              </p>
+            ) : null}
           </>
         ) : (
           <span className="text-slate-500 dark:text-slate-400">
@@ -749,57 +1041,66 @@ function MonthlyChart({
         )}
       </div>
 
-      <div className="relative mt-2 flex h-44 items-end gap-1 border-b border-slate-200 dark:border-slate-700 sm:h-56 sm:gap-2">
-        <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-slate-200 dark:border-slate-800" />
-        <span className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200 dark:border-slate-800" />
-        {months.map((month) => {
-          const isSelected = month.month === selected;
+      {/* The top padding leaves room for the change above the tallest bar. */}
+      <div className="mt-2 pt-5">
+        <div className="relative flex h-40 items-end gap-1 border-b border-slate-200 dark:border-slate-700 sm:h-52 sm:gap-2">
+          <span className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-slate-200 dark:border-slate-800" />
+          <span className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200 dark:border-slate-800" />
+          {months.map((month) => {
+            const isSelected = month.month === selected;
+            const change = changeOf(month);
 
-          return (
-            <button
-              key={month.month}
-              type="button"
-              onClick={() => setSelected(isSelected ? null : month.month)}
-              aria-pressed={isSelected}
-              aria-label={t('storeDashboard.monthAria', {
-                month: monthName(month.month, locale),
-                year,
-                current: value(month.current),
-                previousYear,
-                previous: value(month.previous),
-              })}
-              className={`group relative flex h-full min-w-0 flex-1 items-end justify-center gap-px rounded-t-md transition ${
-                isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-500/5'
-              }`}
-            >
-              <span
-                className="block w-[45%] rounded-t-sm bg-slate-300 dark:bg-slate-600"
-                style={{ height: barHeight(month.previous, max) }}
-              />
-              <span
-                className={`block w-[45%] rounded-t-sm ${
-                  month.status === 'inProgress'
-                    ? 'border border-dashed border-emerald-500 bg-emerald-500/25'
-                    : 'bg-emerald-500 group-hover:bg-emerald-600 dark:bg-emerald-400'
+            return (
+              <button
+                key={month.month}
+                type="button"
+                onClick={() => setSelected(isSelected ? null : month.month)}
+                aria-pressed={isSelected}
+                aria-label={t('storeDashboard.monthAria', {
+                  month: monthName(month.month, locale),
+                  year,
+                  current: value(month.current),
+                  previousYear,
+                  previous: value(month.previous),
+                })}
+                className={`group relative flex h-full min-w-0 flex-1 items-end justify-center gap-px rounded-t-md transition ${
+                  isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-500/5'
                 }`}
-                style={{ height: barHeight(month.current, max) }}
-              />
-            </button>
-          );
-        })}
+              >
+                {change ? (
+                  <ChangeLabel
+                    {...change}
+                    bottom={Math.max(
+                      barPercent(month.previous, max),
+                      barPercent(month.current, max),
+                    )}
+                    align={month.month <= 3 ? 'left' : month.month >= 10 ? 'right' : 'center'}
+                  />
+                ) : null}
+                <span
+                  className="block w-[45%] rounded-t-sm bg-slate-300 dark:bg-slate-600"
+                  style={{ height: barHeight(month.previous, max) }}
+                />
+                <span
+                  className={`block w-[45%] rounded-t-sm ${
+                    month.status === 'inProgress'
+                      ? 'border border-dashed border-emerald-500 bg-emerald-500/25'
+                      : 'bg-emerald-500 group-hover:bg-emerald-600 dark:bg-emerald-400'
+                  }`}
+                  style={{ height: barHeight(month.current, max) }}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="mt-1 flex gap-1 sm:gap-2">
         {months.map((month) => (
-          <span key={month.month} className="min-w-0 flex-1 text-center">
-            <span className="block truncate text-[10px] text-slate-500 dark:text-slate-400">
-              {monthName(month.month, locale, 'short')}
-            </span>
-            {/* Too tight on a phone; the list below carries the same numbers. */}
-            <span
-              className={`hidden truncate text-[10px] font-semibold tabular-nums sm:block ${growthTone(month.growthPercent)}`}
-            >
-              {month.growthPercent === null ? ' ' : formatGrowth(month.growthPercent, locale, t, 0)}
-            </span>
+          <span
+            key={month.month}
+            className="min-w-0 flex-1 truncate text-center text-[10px] text-slate-500 dark:text-slate-400"
+          >
+            {monthName(month.month, locale, 'short')}
           </span>
         ))}
       </div>
@@ -807,29 +1108,34 @@ function MonthlyChart({
   );
 }
 
+/** The months as a sortable list: column headers on desktop, a header row of the same on a phone. */
 function MonthlyTable({
   kpi,
   comparison,
   currency,
   year,
   previousYear,
+  sort,
+  onSort,
 }: {
   kpi: StoreDashboardKpi;
   comparison: StoreDashboardComparison;
   currency: Currency;
   year: number;
   previousYear: number;
+  sort: MonthSort;
+  onSort: (key: MonthSortKey) => void;
 }) {
   const { t, locale } = useTranslation();
   // A month with no value in either year has nothing to show; the running one always shows.
-  const months = comparison.months.filter(
-    (month) => month.status === 'inProgress' || month.current !== null || month.previous !== null,
+  const months = sortMonths(
+    comparison.months.filter(
+      (month) => month.status === 'inProgress' || month.current !== null || month.previous !== null,
+    ),
+    sort,
   );
   const value = (amount: number | null) => formatValue(amount, kpi, currency, locale, t);
-  const difference = (month: StoreDashboardMonth) =>
-    month.status === 'complete' && month.current !== null && month.previous !== null
-      ? month.current - month.previous
-      : null;
+  const sortProps = { sort, onSort };
   const inProgressChip = (
     <span className="ml-1.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
       {t('storeDashboard.inProgressShort')}
@@ -838,7 +1144,23 @@ function MonthlyTable({
 
   return (
     <Card className="!p-0">
-      {/* Mobile and tablet: a row per month */}
+      {/* Mobile and tablet: a row per month, sorted by the row of column names above it */}
+      <div
+        role="group"
+        aria-label={t('storeDashboard.sort')}
+        className="flex items-center gap-3 border-b border-slate-200 px-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 lg:hidden"
+      >
+        <SortButton label={t('storeDashboard.month')} sortKey="month" {...sortProps} />
+        <span className="ml-auto" />
+        <SortButton label={String(year)} sortKey="current" align="right" {...sortProps} />
+        <SortButton label={String(previousYear)} sortKey="previous" align="right" {...sortProps} />
+        <SortButton
+          label={t('storeDashboard.change')}
+          sortKey="growth"
+          align="right"
+          {...sortProps}
+        />
+      </div>
       <ul className="divide-y divide-slate-100 dark:divide-slate-800 lg:hidden">
         {months.map((month) => (
           <li
@@ -865,16 +1187,31 @@ function MonthlyTable({
       <table className="hidden w-full text-sm lg:table">
         <thead>
           <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            <th className="px-4 py-2 font-medium">{t('storeDashboard.month')}</th>
-            <th className="px-4 py-2 text-right font-medium">{previousYear}</th>
-            <th className="px-4 py-2 text-right font-medium">{year}</th>
-            <th className="px-4 py-2 text-right font-medium">{t('storeDashboard.difference')}</th>
-            <th className="px-4 py-2 text-right font-medium">{t('storeDashboard.change')}</th>
+            <SortableHeader label={t('storeDashboard.month')} sortKey="month" {...sortProps} />
+            <SortableHeader
+              label={String(previousYear)}
+              sortKey="previous"
+              align="right"
+              {...sortProps}
+            />
+            <SortableHeader label={String(year)} sortKey="current" align="right" {...sortProps} />
+            <SortableHeader
+              label={t('storeDashboard.difference')}
+              sortKey="difference"
+              align="right"
+              {...sortProps}
+            />
+            <SortableHeader
+              label={t('storeDashboard.change')}
+              sortKey="growth"
+              align="right"
+              {...sortProps}
+            />
           </tr>
         </thead>
         <tbody>
           {months.map((month) => {
-            const change = difference(month);
+            const change = yearDifference(month);
 
             return (
               <tr
@@ -887,13 +1224,15 @@ function MonthlyTable({
                   {monthName(month.month, locale)}
                   {month.status === 'inProgress' ? inProgressChip : null}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
+                <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
                   {value(month.previous)}
                 </td>
-                <td className="px-4 py-2 text-right font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                <td className="whitespace-nowrap px-4 py-2 text-right font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                   {value(month.current)}
                 </td>
-                <td className={`px-4 py-2 text-right tabular-nums ${growthTone(change)}`}>
+                <td
+                  className={`whitespace-nowrap px-4 py-2 text-right tabular-nums ${growthTone(change)}`}
+                >
                   {change === null ? '—' : formatDifference(change, kpi, currency, locale, t)}
                 </td>
                 <td className="px-4 py-2 text-right">
@@ -991,12 +1330,16 @@ function KpiTab({
   currency,
   storeNr,
   onSelectStore,
+  monthSort,
+  onMonthSort,
 }: {
   data: StoreDashboardResponse;
   kpi: StoreDashboardKpi;
   currency: Currency;
   storeNr: number | null;
   onSelectStore: (storeNr: number) => void;
+  monthSort: MonthSort;
+  onMonthSort: (key: MonthSortKey) => void;
 }) {
   const { t } = useTranslation();
   const comparison = comparisonFor(kpi, currency, storeNr);
@@ -1015,7 +1358,7 @@ function KpiTab({
         <div
           className={storeNr === null && data.stores.length > 0 ? 'lg:col-span-3' : 'lg:col-span-5'}
         >
-          <MonthlyTable {...props} />
+          <MonthlyTable {...props} sort={monthSort} onSort={onMonthSort} />
         </div>
         {storeNr === null && data.stores.length > 0 ? (
           <div className="lg:col-span-2">
@@ -1161,6 +1504,8 @@ export function StoreDashboardPage() {
     storeParam !== null && /^\d+$/.test(storeParam) ? Number(storeParam) : null;
   const currency: Currency = searchParams.get('currency') === 'USD' ? 'USD' : 'TMT';
   const tabParam = searchParams.get('tab');
+  // Kept here, so the month list stays in the chosen order from one KPI tab to the next.
+  const [monthSort, setMonthSort] = useState<MonthSort>(DEFAULT_MONTH_SORT);
 
   const query = useQuery({
     queryKey: ['store-dashboard', year ?? null],
@@ -1342,6 +1687,8 @@ export function StoreDashboardPage() {
                   currency={currency}
                   storeNr={storeNr}
                   onSelectStore={(nr) => update({ store: nr })}
+                  monthSort={monthSort}
+                  onMonthSort={(key) => setMonthSort((current) => nextMonthSort(current, key))}
                 />
               ) : (
                 <SummaryTab data={data} currency={currency} storeNr={storeNr} onOpen={openKpi} />

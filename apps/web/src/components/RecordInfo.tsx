@@ -20,6 +20,7 @@ import type {
 } from '../types/api';
 import { Drawer } from './Drawer';
 import { Spinner } from './Spinner';
+import { describeTargetChange } from './TargetChange';
 
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
@@ -342,10 +343,18 @@ function copiedFromName(context: AuditLogEntry['context']): string | null {
     : null;
 }
 
+/** A copy that changed its targets by a percentage says by how much (ADR-070). */
+function targetChangeOf(context: AuditLogEntry['context']): number {
+  const percent = context?.targetChangePercent;
+
+  return typeof percent === 'number' ? percent : 0;
+}
+
 function HistoryItem({ entry, tableName }: { entry: AuditLogEntry; tableName: AuditedTable }) {
   const { t, locale } = useTranslation();
   const via = viaLabel(entry.context, t);
   const copiedFrom = copiedFromName(entry.context);
+  const targetChange = describeTargetChange(targetChangeOf(entry.context), t, locale);
   const exportedFile = exportedFileName(entry.context);
   const fields = statusOnlyChange(entry) === null ? Object.entries(entry.changes) : [];
 
@@ -366,6 +375,9 @@ function HistoryItem({ entry, tableName }: { entry: AuditLogEntry; tableName: Au
         <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
           {t('recordInfo.copiedFrom', { name: copiedFrom })}
         </p>
+      ) : null}
+      {targetChange ? (
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{targetChange}</p>
       ) : null}
       {exportedFile ? (
         <p className="mt-1 break-all text-xs text-slate-600 dark:text-slate-300">

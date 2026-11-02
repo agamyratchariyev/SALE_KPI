@@ -48,6 +48,7 @@ import {
 } from './kpi-assignment-response.js';
 import {
   type AssignableEmployee,
+  changeTarget,
   findIneligibleEmployees,
   findTargetProblem,
   planItemsFromTemplate,
@@ -222,12 +223,14 @@ export class KpiAssignmentsService {
   }
 
   /**
-   * Copies a period's plans with their targets into this one. Employees who already have
-   * a plan, who are no longer active, or who lost their Tiger link are reported back.
+   * Copies a period's plans with their targets into this one, each target changed by
+   * `targetChangePercent` (ADR-070). Employees who already have a plan, who are no longer
+   * active, or who lost their Tiger link are reported back.
    */
   async copyFrom(periodId: string, dto: CopyKpiAssignmentsDto): Promise<KpiAssignmentCopyResponse> {
     const period = await this.findOpenPeriodOrFail(periodId);
     const source = await this.findPeriodOrFail(dto.sourcePeriodId);
+    const targetChangePercent = dto.targetChangePercent ?? 0;
 
     if (source.id.toLowerCase() === period.id.toLowerCase()) {
       throw new BadRequestException('sourcePeriodId must be a different period.');
@@ -268,7 +271,13 @@ export class KpiAssignmentsService {
       } else if (problem) {
         skipped.push({ employeeId: employee.id, reason: problem.reason });
       } else {
-        copies.push({ assignment, items });
+        copies.push({
+          assignment,
+          items: items.map((item) => ({
+            ...item,
+            targetValue: changeTarget(item.targetValue, targetChangePercent, item.unit),
+          })),
+        });
       }
     }
 
@@ -285,6 +294,7 @@ export class KpiAssignmentsService {
               via: 'copy-assignments',
               period: periodLabel(period),
               copiedFrom: periodLabel(source),
+              ...(targetChangePercent === 0 ? {} : { targetChangePercent }),
             },
           });
         }
