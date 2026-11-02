@@ -120,7 +120,7 @@ export class KpiAssignmentsController {
   @ApiOperation({
     summary: 'Başka bir dönemin planlarını hedefleriyle bu döneme kopyalar (yalnız full_access).',
     description:
-      'Planı zaten olan, pasifleşmiş ya da Tiger eşlemesini kaybetmiş çalışanlar atlanır ve nedenleriyle döner.',
+      '`targetChangePercent` verilirse her hedef o yüzde kadar değiştirilerek kopyalanır (ADR-070). Planı zaten olan, pasifleşmiş ya da Tiger eşlemesini kaybetmiş çalışanlar atlanır ve nedenleriyle döner.',
   })
   @ApiParam({ name: 'periodId', type: String, format: 'uuid' })
   @ApiBody({ type: CopyKpiAssignmentsDto })

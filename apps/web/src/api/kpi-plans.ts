@@ -83,11 +83,18 @@ export function assignKpiTemplate(
   });
 }
 
-/** Copies another period's plans with their targets into this one. */
-export function copyKpiPlans(periodId: string, sourcePeriodId: string): Promise<KpiPlanCopyResult> {
+/**
+ * Copies another period's plans with their targets into this one, each target changed by
+ * `targetChangePercent` (ADR-070); 0 copies them as they are.
+ */
+export function copyKpiPlans(
+  periodId: string,
+  sourcePeriodId: string,
+  targetChangePercent = 0,
+): Promise<KpiPlanCopyResult> {
   return apiFetch<KpiPlanCopyResult>(`/kpi-periods/${periodId}/copy-assignments`, {
     method: 'POST',
-    body: { sourcePeriodId },
+    body: { sourcePeriodId, targetChangePercent },
   });
 }
 

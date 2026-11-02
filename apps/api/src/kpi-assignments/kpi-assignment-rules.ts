@@ -34,6 +34,30 @@ export function findTargetProblem(value: number | null, unit: KpiUnit): TargetPr
   return unit === 'percent' && value > 100 ? 'percent' : null;
 }
 
+/** How far a copy may change its targets, in percent (ADR-070). */
+export const MIN_TARGET_CHANGE_PERCENT = -90;
+export const MAX_TARGET_CHANGE_PERCENT = 300;
+export const TARGET_CHANGE_DECIMALS = 2;
+
+/**
+ * A target copied with a change of `percent` (+10 makes 100 into 110). Money and count
+ * targets become whole numbers, percent and score targets keep two decimals, and a
+ * percentage KPI never passes 100. 0% copies the value as it is; no target stays none.
+ */
+export function changeTarget(value: number | null, percent: number, unit: KpiUnit): number | null {
+  if (value === null || percent === 0) {
+    return value;
+  }
+
+  const decimals = unit === 'money' || unit === 'count' ? 0 : TARGET_CHANGE_DECIMALS;
+  const factor = 10 ** decimals;
+  // EPSILON nudges halves that binary floating point stores just below .5 (1.005) upwards.
+  const changed = Math.round(((value * (100 + percent)) / 100 + Number.EPSILON) * factor) / factor;
+  const limit = unit === 'percent' ? 100 : MAX_TARGET_VALUE;
+
+  return Math.min(changed, limit);
+}
+
 /**
  * `EMPLOYEE_*` KPIs are measured through the employee's Tiger salesperson reference, so a
  * template that holds one can only be assigned to a linked employee.

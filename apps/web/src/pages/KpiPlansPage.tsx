@@ -7,7 +7,6 @@ import {
   assignKpiTemplate,
   calculateKpiPeriod,
   closeKpiPeriod,
-  copyKpiPlans,
   deleteKpiPlan,
   ensureKpiPeriod,
   exportKpiPeriod,
@@ -17,6 +16,7 @@ import {
 } from '../api/kpi-plans';
 import { getKpiTemplate, listKpiTemplates } from '../api/kpi-templates';
 import { AppShell } from '../components/AppShell';
+import { CopyKpiPlansModal } from '../components/CopyKpiPlansModal';
 import { PasswordConfirmModal } from '../components/PasswordConfirmModal';
 import { Drawer } from '../components/Drawer';
 import { EmployeeAvatarButton } from '../components/EmployeeAvatarButton';
@@ -32,6 +32,7 @@ import { PersonAvatar } from '../components/ProfileAvatar';
 import { ProgressMeter } from '../components/ProgressMeter';
 import { RecordInfoButton } from '../components/RecordInfo';
 import { SelectCheckbox } from '../components/SelectCheckbox';
+import { describeTargetChange } from '../components/TargetChange';
 import { localizeApiError } from '../i18n/api-errors';
 import { formatDate, formatNumber } from '../i18n/formatters';
 import { useTranslation, type Translate, type TranslationKey } from '../i18n/locale-store';
@@ -41,6 +42,7 @@ import { saveFile } from '../lib/save-file';
 import type {
   EmployeeResponse,
   KpiPeriod,
+  KpiPlanCopyResult,
   KpiPlanSalary,
   KpiPlanSalarySummary,
   KpiPlanSkipReason,
@@ -526,7 +528,8 @@ function PlanSalarySummary({
 interface PeriodPanelProps {
   periods: KpiPeriod[];
   period: KpiPeriod;
-  previousPeriod: KpiPeriod | undefined;
+  /** Another month exists to copy plans from; which one is chosen in the copy dialog. */
+  canCopy: boolean;
   onSelect: (label: string) => void;
   onNewPeriod: () => void;
   onCalculate: () => void;
@@ -535,7 +538,6 @@ interface PeriodPanelProps {
   onReopen: () => void;
   onExport: () => void;
   calculating: boolean;
-  copying: boolean;
   closing: boolean;
   reopening: boolean;
   exporting: boolean;
@@ -549,7 +551,7 @@ interface PeriodPanelProps {
 function PeriodPanel({
   periods,
   period,
-  previousPeriod,
+  canCopy,
   onSelect,
   onNewPeriod,
   onCalculate,
@@ -558,7 +560,6 @@ function PeriodPanel({
   onReopen,
   onExport,
   calculating,
-  copying,
   closing,
   reopening,
   exporting,
@@ -653,14 +654,13 @@ function PeriodPanel({
               >
                 {calculating ? t('kpiPlans.calculatingAll') : t('kpiPlans.calculateAll')}
               </button>
-              {previousPeriod ? (
+              {canCopy ? (
                 <button
                   type="button"
                   onClick={onCopy}
-                  disabled={copying}
                   className="h-11 grow rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-40 sm:grow-0 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
-                  {t('kpiPlans.copyFrom', { period: previousPeriod.label })}
+                  {t('kpiPlans.copyFrom')}
                 </button>
               ) : null}
               <button
@@ -696,6 +696,8 @@ export function KpiPlansPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [cardEmployeeId, setCardEmployeeId] = useState<string | null>(null);
   const [newPeriodOpen, setNewPeriodOpen] = useState(false);
+  // Copying from another month asks how much the targets change first (ADR-070).
+  const [copyOpen, setCopyOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
@@ -709,9 +711,15 @@ export function KpiPlansPage() {
   // The chosen month lives in the address (?period=2026-09), so a reload or a way back from a
   // plan lands on the same month; without it the newest month is shown.
   const period = periods.find((item) => item.label === searchParams.get('period')) ?? periods[0];
-  const previousPeriod = period
-    ? periods.find((item) => item.year * 12 + item.month < period.year * 12 + period.month)
-    : undefined;
+  // The copy dialog starts on the latest earlier month that has plans; any other month can be
+  // picked there (ADR-070). Without an earlier month it starts on the newest other one.
+  const earlierPeriods = period
+    ? periods.filter((item) => item.year * 12 + item.month < period.year * 12 + period.month)
+    : [];
+  const copySource =
+    earlierPeriods.find((item) => item.assignmentCount > 0) ??
+    earlierPeriods[0] ??
+    periods.find((item) => item.id !== period?.id);
 
   // The KPI templates screen links here with ?template=<id>: the plans built from that template.
   const templateParam = searchParams.get('template') ?? '';
@@ -861,24 +869,19 @@ export function KpiPlansPage() {
     onError: handlePeriodActionError,
   });
 
-  const copyMutation = useMutation({
-    mutationFn: ({ target, source }: { target: string; source: string }) =>
-      copyKpiPlans(target, source),
-    onSuccess: async (result) => {
-      setNotice({
-        tone: 'success',
-        text:
-          result.created === 0
-            ? t('kpiPlans.copiedNone')
-            : t('kpiPlans.copied', {
-                created: formatNumber(result.created, locale),
-                skipped: formatNumber(result.skipped.length, locale),
-              }),
-      });
-      await refresh();
-    },
-    onError: (error) => setNotice({ tone: 'error', text: describePeriodError(error, t, locale) }),
-  });
+  async function handleCopied(result: KpiPlanCopyResult, targetChangePercent: number) {
+    setCopyOpen(false);
+    const change = result.created > 0 ? describeTargetChange(targetChangePercent, t, locale) : null;
+    const copied =
+      result.created === 0
+        ? t('kpiPlans.copiedNone')
+        : t('kpiPlans.copied', {
+            created: formatNumber(result.created, locale),
+            skipped: formatNumber(result.skipped.length, locale),
+          });
+    setNotice({ tone: 'success', text: change ? `${copied} ${change}` : copied });
+    await refresh();
+  }
 
   const calculateMutation = useMutation({
     mutationFn: (id: string) => calculateKpiPeriod(id),
@@ -948,19 +951,6 @@ export function KpiPlansPage() {
     });
   }
 
-  async function copyFromPrevious() {
-    if (!period || !previousPeriod) return;
-
-    if (
-      await confirmAction({
-        message: t('kpiPlans.copyConfirm', { period: previousPeriod.label }),
-        tone: 'default',
-      })
-    ) {
-      copyMutation.mutate({ target: period.id, source: previousPeriod.id });
-    }
-  }
-
   async function removePlan(plan: KpiPlanSummary) {
     if (!period) return;
 
@@ -1026,16 +1016,18 @@ export function KpiPlansPage() {
               <PeriodPanel
                 periods={periods}
                 period={period}
-                previousPeriod={previousPeriod}
+                canCopy={copySource !== undefined}
                 onSelect={selectPeriod}
                 onNewPeriod={() => setNewPeriodOpen(true)}
                 onCalculate={() => calculateMutation.mutate(period.id)}
-                onCopy={() => void copyFromPrevious()}
+                onCopy={() => {
+                  setNotice(null);
+                  setCopyOpen(true);
+                }}
                 onClose={closePeriod}
                 onReopen={reopenPeriod}
                 onExport={exportPeriod}
                 calculating={calculateMutation.isPending}
-                copying={copyMutation.isPending}
                 closing={closeMutation.isPending}
                 reopening={reopenMutation.isPending}
                 exporting={exportMutation.isPending}
@@ -1320,6 +1312,18 @@ export function KpiPlansPage() {
                   return exportMutation.mutateAsync(input);
               }
             }}
+          />
+        ) : null}
+        {copyOpen && period && copySource ? (
+          <CopyKpiPlansModal
+            period={period}
+            periods={periods}
+            defaultSourceId={copySource.id}
+            describeError={(error) => describePeriodError(error, t, locale)}
+            onClose={() => setCopyOpen(false)}
+            onCopied={(result, targetChangePercent) =>
+              void handleCopied(result, targetChangePercent)
+            }
           />
         ) : null}
         <EmployeeCardModal employeeId={cardEmployeeId} onClose={() => setCardEmployeeId(null)} />

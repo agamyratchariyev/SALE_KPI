@@ -36,7 +36,7 @@ import {
   BulkStatusDto,
   BulkUpdateResponse,
 } from '../common/dto/bulk.dto.js';
-import { CopyKpiTemplateDto } from './dto/copy-kpi-template.dto.js';
+import { BulkCopyKpiTemplatesDto, CopyKpiTemplateDto } from './dto/copy-kpi-template.dto.js';
 import { ListKpiTemplatesQueryDto } from './dto/list-kpi-templates-query.dto.js';
 import { SaveKpiTemplateDto } from './dto/save-kpi-template.dto.js';
 import {
@@ -92,14 +92,14 @@ export class KpiTemplatesController {
     summary:
       'Seçilen KPI şablonlarını bütün satırlarıyla toplu olarak kopyalar (yalnız full_access).',
     description:
-      'Her şablon `POST /kpi-templates/:id/copy` ile aynı kurallarla, istek sırasıyla kopyalanır; adlara bir sonraki boş " (n)" eki getirilir ve kopyalar aktif oluşur. Id\'lerden biri bile yoksa hiçbir şey kopyalanmaz (404).',
+      'Her şablon `POST /kpi-templates/:id/copy` ile aynı kurallarla, istek sırasıyla kopyalanır; adlara bir sonraki boş " (n)" eki getirilir ve kopyalar aktif oluşur. `targetChangePercent` her kopyanın varsayılan hedeflerine uygulanır (ADR-070). Id\'lerden biri bile yoksa hiçbir şey kopyalanmaz (404).',
   })
-  @ApiBody({ type: BulkIdsDto })
+  @ApiBody({ type: BulkCopyKpiTemplatesDto })
   @ApiCreatedResponse({ type: KpiTemplateBulkCopyResponse })
   @ApiNotFoundResponse({ description: 'Seçilen şablonlardan en az biri bulunamadı.' })
   @ApiForbiddenResponse({ description: '`full_access` yok.' })
-  copyMany(@Body() dto: BulkIdsDto): Promise<KpiTemplateBulkCopyResponse> {
-    return this.kpiTemplatesService.copyMany(dto.ids);
+  copyMany(@Body() dto: BulkCopyKpiTemplatesDto): Promise<KpiTemplateBulkCopyResponse> {
+    return this.kpiTemplatesService.copyMany(dto.ids, dto.targetChangePercent ?? 0);
   }
 
   @Get(':id')
@@ -157,7 +157,7 @@ export class KpiTemplatesController {
   @ApiOperation({
     summary: 'KPI şablonunu bütün satırlarıyla birlikte kopyalar (yalnız full_access).',
     description:
-      'Yeni şablon aktif olarak oluşturulur; açıklama ve bütün satırlar (KPI, ağırlık, varsayılan hedef, bilgiler, sıra) aynen kopyalanır. Kaynak pasif olsa da kopyalanabilir. `name` verilmezse kaynağın adına bir sonraki boş " (n)" eki getirilir (ör. `MÜDÜR KPI 01 (2)`); kopyanın kopyası numaralandırmayı sürdürür.',
+      'Yeni şablon aktif olarak oluşturulur; açıklama ve bütün satırlar (KPI, ağırlık, varsayılan hedef, bilgiler, sıra) aynen kopyalanır. `targetChangePercent` verilirse varsayılan hedefler o yüzde kadar değiştirilir (ADR-070). Kaynak pasif olsa da kopyalanabilir. `name` verilmezse kaynağın adına bir sonraki boş " (n)" eki getirilir (ör. `MÜDÜR KPI 01 (2)`); kopyanın kopyası numaralandırmayı sürdürür.',
   })
   @ApiParam({ name: 'id', type: String, format: 'uuid', description: 'Kopyalanacak şablon' })
   @ApiBody({ type: CopyKpiTemplateDto, required: false })

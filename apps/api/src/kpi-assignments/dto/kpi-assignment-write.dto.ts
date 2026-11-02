@@ -16,6 +16,7 @@ import {
 import { BULK_MAX_IDS } from '../../common/dto/bulk.dto.js';
 import { GUID_PATTERN } from '../../common/guid.js';
 import { MAX_TARGET_DECIMALS, MAX_TARGET_VALUE } from '../kpi-assignment-rules.js';
+import { TargetChangePercent } from './target-change-percent.js';
 
 const toLowerCaseIds = ({ value }: { value: unknown }): unknown =>
   Array.isArray(value)
@@ -52,6 +53,9 @@ export class CopyKpiAssignmentsDto {
   })
   @Matches(GUID_PATTERN, { message: 'sourcePeriodId must be a GUID' })
   sourcePeriodId: string;
+
+  @TargetChangePercent()
+  targetChangePercent?: number;
 }
 
 export class KpiTargetDto {
