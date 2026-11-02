@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -6,6 +7,12 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 
 // Ports live in the repo-root .env so Docker Compose and local development agree.
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+
+// The release shown in the app (Settings, menu) is the repo-root package.json version,
+// so bumping it for a release is all it takes.
+const rootPackage = JSON.parse(readFileSync(`${repoRoot}package.json`, 'utf8')) as {
+  version: string;
+};
 
 // The app loads nothing from the internet (ADR-042): fonts, CSS, images and scripts come from
 // the web server itself, and requests go only to the API. The production build carries a CSP
@@ -56,6 +63,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBaseUrl),
+      __APP_VERSION__: JSON.stringify(rootPackage.version),
     },
   };
 });
