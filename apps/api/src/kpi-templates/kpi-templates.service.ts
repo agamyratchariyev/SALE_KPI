@@ -12,12 +12,14 @@ import {
 import type { BulkDeleteResponse, BulkUpdateResponse } from '../common/dto/bulk.dto.js';
 import { getFirmNumber } from '../config/environment.js';
 import { KpiAssignmentEntity } from '../kpi-assignments/entities/kpi-assignment.entity.js';
+import { changeTarget } from '../kpi-assignments/kpi-assignment-rules.js';
 import { KpiDefinitionEntity } from '../kpi-definitions/entities/kpi-definition.entity.js';
 import { periodLabel } from '../kpi-periods/kpi-period-rules.js';
 import {
   readKpiDefinitionInputSchema,
   readKpiDefinitionName,
 } from '../kpi-definitions/kpi-definition-response.js';
+import type { KpiUnit } from '../kpi-definitions/kpi-definition.types.js';
 import type { KpiInputField, LocalizedText } from '../kpi-definitions/kpi-input-schema.js';
 import {
   KpiInputValuesError,
@@ -348,7 +350,7 @@ export class KpiTemplatesService {
    * Copies every selected template in request order. All ids must exist, otherwise
    * nothing is copied; copies are created one by one so their " (n)" names stay distinct.
    */
-  async copyMany(ids: string[]): Promise<KpiTemplateBulkCopyResponse> {
+  async copyMany(ids: string[], targetChangePercent = 0): Promise<KpiTemplateBulkCopyResponse> {
     const found = await this.templateRepository.find({
       select: { id: true },
       where: { id: In(ids) },
@@ -365,7 +367,7 @@ export class KpiTemplatesService {
 
     for (const id of ids) {
       const sourceId = storedIds.get(id.toLowerCase()) ?? id;
-      const copy = await this.copyTemplate(sourceId, undefined, 'bulk-copy');
+      const copy = await this.copyTemplate(sourceId, undefined, targetChangePercent, 'bulk-copy');
       copies.push({ sourceId, id: copy.id, name: copy.name });
     }
 
@@ -374,15 +376,17 @@ export class KpiTemplatesService {
 
   /**
    * Duplicates a template and all of its items as a new active template. The items are
-   * copied as stored; they were validated when the source was saved.
+   * copied as stored, they were validated when the source was saved; only the default
+   * targets may be changed by `targetChangePercent` (ADR-070).
    */
   copy(id: string, dto: CopyKpiTemplateDto): Promise<KpiTemplateResponse> {
-    return this.copyTemplate(id, dto.name);
+    return this.copyTemplate(id, dto.name, dto.targetChangePercent ?? 0);
   }
 
   private async copyTemplate(
     id: string,
     requestedName: string | undefined,
+    targetChangePercent: number,
     via?: string,
   ): Promise<KpiTemplateResponse> {
     const source = await this.templateRepository.findOneBy({ id });
@@ -391,10 +395,14 @@ export class KpiTemplatesService {
       throw new NotFoundException('KPI template not found.');
     }
 
-    const items = await this.loadLoggedItems(this.dataSource.manager, source.id);
+    const items = (await this.loadLoggedItems(this.dataSource.manager, source.id)).map((item) => ({
+      ...item,
+      targetValue: changeTarget(item.targetValue, targetChangePercent, item.unit),
+    }));
     const context: Record<string, AuditValue> = {
       copiedFrom: { id: source.id, name: source.name },
       ...(via ? { via } : {}),
+      ...(targetChangePercent === 0 ? {} : { targetChangePercent }),
     };
 
     for (let attempt = 1; ; attempt += 1) {
@@ -462,7 +470,10 @@ export class KpiTemplatesService {
     );
   }
 
-  private async loadLoggedItems(manager: EntityManager, templateId: string): Promise<LoggedItem[]> {
+  private async loadLoggedItems(
+    manager: EntityManager,
+    templateId: string,
+  ): Promise<Array<LoggedItem & { unit: KpiUnit }>> {
     const items = await manager.getRepository(KpiTemplateItemEntity).find({
       where: { templateId },
       relations: { definition: true },
@@ -481,6 +492,7 @@ export class KpiTemplatesService {
         name: readKpiDefinitionName(item.definition),
         sortOrder: item.sortOrder,
         targetValue: item.targetValue,
+        unit: item.definition.unit,
         weight: item.weight,
       };
     });

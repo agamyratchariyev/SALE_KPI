@@ -92,6 +92,10 @@ export interface MonthComparison {
   previous: number | null;
   /** Only for a finished month with a positive value the year before. */
   growthPercent: number | null;
+  /** The month before (January: December of the year before); only for a finished month. */
+  previousMonth: number | null;
+  /** Change from the month before; only for a finished month with a positive month before. */
+  previousMonthGrowthPercent: number | null;
 }
 
 export interface ComparisonSummary {
@@ -179,7 +183,8 @@ function aggregate(
 /**
  * Compares `year` with the year before, month by month. `values` holds one amount per month
  * (`YYYY-MM`); a missing month had no sales documents (no visitor count for the visitor KPIs).
- * The running month is shown but never compared or counted: it is only partly over.
+ * The running month is shown but never compared or counted: it is only partly over. A finished
+ * month is also compared with the month before it, January with December of the year before.
  */
 export function compareYears(
   values: ReadonlyMap<string, MonthAmount>,
@@ -195,6 +200,10 @@ export function compareYears(
     const status = monthStatus(year, month, currentMonth);
     const current = status === 'upcoming' ? undefined : values.get(monthKey(year, month));
     const previous = values.get(monthKey(year - 1, month));
+    const monthBefore =
+      status === 'complete'
+        ? values.get(month === 1 ? monthKey(year - 1, 12) : monthKey(year, month - 1))
+        : undefined;
 
     if (current) {
       currentAmounts.set(month, current);
@@ -213,6 +222,8 @@ export function compareYears(
         status === 'complete'
           ? growthPercent(current?.value ?? null, previous?.value ?? null)
           : null,
+      previousMonth: monthBefore?.value ?? null,
+      previousMonthGrowthPercent: growthPercent(current?.value ?? null, monthBefore?.value ?? null),
     });
   }
 

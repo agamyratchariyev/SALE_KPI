@@ -70,12 +70,19 @@ export async function bulkDeleteKpiTemplates(ids: string[]): Promise<BulkDeleteR
   return { deleted };
 }
 
-/** Copies the saved template with all items; without a name the API appends " (n)". */
-export function copyKpiTemplate(id: string, name?: string): Promise<KpiTemplate> {
-  return apiFetch<KpiTemplate>(`/kpi-templates/${id}/copy`, {
-    method: 'POST',
-    body: name === undefined ? {} : { name },
-  });
+export interface CopyKpiTemplateInput {
+  /** Without a name the API appends the next free " (n)". */
+  name?: string;
+  /** Changes every default target by this percentage (ADR-070); 0 copies them as they are. */
+  targetChangePercent?: number;
+}
+
+/** Copies the saved template with all items. */
+export function copyKpiTemplate(
+  id: string,
+  input: CopyKpiTemplateInput = {},
+): Promise<KpiTemplate> {
+  return apiFetch<KpiTemplate>(`/kpi-templates/${id}/copy`, { method: 'POST', body: input });
 }
 
 /** Bulk (de)activation from the list screen (ADR-035); `updated` counts rows that changed. */
@@ -96,14 +103,20 @@ export async function bulkSetKpiTemplatesActive(
   return { updated };
 }
 
-/** Copies every selected template with its items; each copy gets a " (n)" name. */
-export async function bulkCopyKpiTemplates(ids: string[]): Promise<KpiTemplateBulkCopyResponse> {
+/**
+ * Copies every selected template with its items; each copy gets a " (n)" name and its
+ * default targets changed by `targetChangePercent` (ADR-070).
+ */
+export async function bulkCopyKpiTemplates(
+  ids: string[],
+  targetChangePercent = 0,
+): Promise<KpiTemplateBulkCopyResponse> {
   const copies: KpiTemplateBulkCopyResponse['copies'] = [];
 
   for (const chunk of chunkIds(ids)) {
     const result = await apiFetch<KpiTemplateBulkCopyResponse>('/kpi-templates/bulk-copy', {
       method: 'POST',
-      body: { ids: chunk },
+      body: { ids: chunk, targetChangePercent },
     });
     copies.push(...result.copies);
   }

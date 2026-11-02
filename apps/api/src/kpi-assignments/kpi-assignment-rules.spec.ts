@@ -3,11 +3,48 @@ import { test } from 'node:test';
 
 import {
   MAX_TARGET_VALUE,
+  changeTarget,
   findIneligibleEmployees,
   findTargetProblem,
   planItemsFromTemplate,
   requiresErpLink,
 } from './kpi-assignment-rules.js';
+
+void test('a copy without a change keeps every target exactly as it was', () => {
+  assert.equal(changeTarget(12.3456, 0, 'money'), 12.3456);
+  assert.equal(changeTarget(18.125, 0, 'percent'), 18.125);
+  assert.equal(changeTarget(null, 0, 'money'), null);
+});
+
+void test('changes money and count targets by the percentage, as whole numbers', () => {
+  assert.equal(changeTarget(347_621, 10, 'money'), 382_383);
+  assert.equal(changeTarget(1_000, 7.5, 'money'), 1_075);
+  assert.equal(changeTarget(120, -15, 'count'), 102);
+  // 45 * 1.1 = 49.5 rounds up, not down to the 49.49999… floating point gives.
+  assert.equal(changeTarget(45, 10, 'count'), 50);
+  assert.equal(changeTarget(null, 10, 'count'), null);
+});
+
+void test('percent targets keep two decimals and never pass 100', () => {
+  assert.equal(changeTarget(18, 10, 'percent'), 19.8);
+  assert.equal(changeTarget(1.005, 0.5, 'percent'), 1.01);
+  assert.equal(changeTarget(95, 10, 'percent'), 100);
+  assert.equal(changeTarget(40, -12.5, 'score'), 35);
+});
+
+void test('a changed target still fits the target column', () => {
+  assert.equal(changeTarget(MAX_TARGET_VALUE, 300, 'money'), MAX_TARGET_VALUE);
+  // Every change keeps the target inside what findTargetProblem accepts.
+  for (const [value, unit] of [
+    [347_621.1234, 'money'],
+    [33.3333, 'percent'],
+    [7, 'count'],
+  ] as const) {
+    for (const percent of [-90, -33.33, 12.34, 300]) {
+      assert.equal(findTargetProblem(changeTarget(value, percent, unit), unit), null);
+    }
+  }
+});
 
 void test('accepts targets the target column can hold', () => {
   assert.equal(findTargetProblem(null, 'money'), null);

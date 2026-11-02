@@ -129,6 +129,7 @@ interface TranslationShape {
     themeLight: string;
     themeDark: string;
     themeSystem: string;
+    version: string;
   };
   sessions: {
     title: string;
@@ -317,7 +318,6 @@ interface TranslationShape {
     deleteError: string;
     deleteInUse: string;
     copy: string;
-    copying: string;
     copyHint: string;
     copyError: string;
     copiedNotice: string;
@@ -456,7 +456,6 @@ interface TranslationShape {
     assignSubmit: string;
     assigned: string;
     copyFrom: string;
-    copyConfirm: string;
     copied: string;
     copiedNone: string;
     loading: string;
@@ -843,6 +842,12 @@ interface TranslationShape {
     monthAria: string;
     month: string;
     change: string;
+    /** The row of column names that sorts the month list on a phone. */
+    sort: string;
+    /** The switch of what the chart writes above the bars. */
+    changeBasis: string;
+    vsPreviousYear: string;
+    vsPreviousMonth: string;
     storesTitle: string;
     storesHint: string;
     singleStore: string;
@@ -860,6 +865,50 @@ interface TranslationShape {
       conversion: string;
       visitors: string;
     };
+  };
+  /** Copying templates and plans with a target change (ADR-070). */
+  kpiCopy: {
+    changeLabel: string;
+    decrease: string;
+    increase: string;
+    presets: string;
+    summaryKeep: string;
+    summaryUp: string;
+    summaryDown: string;
+    rangeError: string;
+    roundingNote: string;
+    previewTitle: string;
+    previewTargets: string;
+    previewLoading: string;
+    previewError: string;
+    noTarget: string;
+    noDefaultTargets: string;
+    capped: string;
+    weight: string;
+    templateTitle: string;
+    templatesTitle: string;
+    templateSource: string;
+    nameLabel: string;
+    nameHint: string;
+    namePlaceholder: string;
+    templatesList: string;
+    moreTemplates: string;
+    templatesNameHint: string;
+    copyTemplate: string;
+    copyTemplates: string;
+    copying: string;
+    plansTitle: string;
+    sourceLabel: string;
+    targetLabel: string;
+    sampleTitle: string;
+    sourceEmpty: string;
+    samplePosition: string;
+    previousSample: string;
+    nextSample: string;
+    skipNote: string;
+    copyPlans: string;
+    changedUp: string;
+    changedDown: string;
   };
   errors: {
     generic: string;
@@ -997,6 +1046,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Açık',
       themeDark: 'Koyu',
       themeSystem: 'Sistem',
+      version: 'Sürüm v{version}',
     },
     sessions: {
       title: 'Oturumlarım',
@@ -1193,7 +1243,6 @@ export const translations: Record<Locale, TranslationShape> = {
       deleteInUse:
         'Bu şablondan {count} KPI planı oluşturulmuş, bu yüzden silinemez. Şablonu pasifleştirebilirsiniz.',
       copy: 'Kopyasını oluştur',
-      copying: 'Kopyalanıyor…',
       copyHint: 'Kaydedilmiş son hâli bütün KPI’larıyla kopyalanır.',
       copyError: 'Şablon kopyalanamadı.',
       copiedNotice:
@@ -1340,8 +1389,7 @@ export const translations: Record<Locale, TranslationShape> = {
       employeeSearch: 'Çalışan ara',
       assignSubmit: 'Plan oluştur',
       assigned: '{count} çalışana plan verildi.',
-      copyFrom: '{period} ayından kopyala',
-      copyConfirm: '{period} dönemindeki planlar hedefleriyle kopyalansın mı?',
+      copyFrom: 'Başka dönemden kopyala',
       copied: '{created} plan kopyalandı, {skipped} çalışan atlandı.',
       copiedNone: 'Kopyalanacak uygun plan bulunamadı.',
       loading: 'Yükleniyor…',
@@ -1752,6 +1800,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} {current}, {previousYear} {previous}',
       month: 'Ay',
       change: 'Değişim',
+      sort: 'Sıralama',
+      changeBasis: 'Çubukların üstündeki değişim',
+      vsPreviousYear: 'Önceki yıla göre',
+      vsPreviousMonth: 'Önceki aya göre',
       storesTitle: 'Mağaza karşılaştırması',
       storesHint: 'Karşılaştırılan aylardaki artışa göre sıralı.',
       singleStore: 'Bu yıllarda yalnız bir mağazanın satışı var.',
@@ -1770,6 +1822,50 @@ export const translations: Record<Locale, TranslationShape> = {
         conversion: 'Dönüşüm',
         visitors: 'Ziyaretçi',
       },
+    },
+    kpiCopy: {
+      changeLabel: 'Hedef değişimi',
+      decrease: 'Bir puan azalt',
+      increase: 'Bir puan artır',
+      presets: 'Hazır oranlar',
+      summaryKeep: 'Hedefler olduğu gibi kopyalanır.',
+      summaryUp: 'Her hedef %{value} artırılır.',
+      summaryDown: 'Her hedef %{value} azaltılır.',
+      rangeError: '{min} ile {max} arasında, en fazla iki ondalıklı bir oran yazın.',
+      roundingNote:
+        'Para ve adet hedefleri tam sayıya yuvarlanır; yüzde hedefleri 100’ü geçmez. Hedefi boş satırlar boş kalır.',
+      previewTitle: 'Önizleme',
+      previewTargets: '{items} KPI’dan {targets} tanesinde hedef var',
+      previewLoading: 'Önizleme yükleniyor…',
+      previewError: 'Önizleme yüklenemedi; kopyalama yine de çalışır.',
+      noTarget: 'Hedef yok, boş kalır',
+      noDefaultTargets: 'Bu şablonda varsayılan hedef yok; kopya da hedefsiz oluşur.',
+      capped: 'en fazla %100',
+      weight: 'Ağırlık {value}',
+      templateTitle: 'Şablonu kopyala',
+      templatesTitle: '{count} şablonu kopyala',
+      templateSource: '“{name}” bütün KPI’larıyla yeni bir şablon olarak kopyalanır.',
+      nameLabel: 'Yeni şablonun adı',
+      nameHint: 'Boş bırakırsanız sıradaki numara eklenir, ör. “{name}”.',
+      namePlaceholder: 'Otomatik',
+      templatesList: 'Kopyalanacak şablonlar',
+      moreTemplates: '+{count} şablon daha',
+      templatesNameHint: 'Her kopyanın adına “(2)” gibi sıradaki numara eklenir.',
+      copyTemplate: 'Kopyala',
+      copyTemplates: '{count} şablonu kopyala',
+      copying: 'Kopyalanıyor…',
+      plansTitle: 'Planları kopyala',
+      sourceLabel: 'Kaynak dönem',
+      targetLabel: 'Bu dönem',
+      sampleTitle: 'Örnek plan',
+      sourceEmpty: 'Seçilen dönemde kopyalanacak plan yok.',
+      samplePosition: '{index} / {total}',
+      previousSample: 'Önceki örnek',
+      nextSample: 'Sonraki örnek',
+      skipNote: 'Bu dönemde planı olan, pasif ya da Tiger eşlemesi olmayan çalışanlar atlanır.',
+      copyPlans: 'Planları kopyala',
+      changedUp: 'Hedefler %{value} artırıldı.',
+      changedDown: 'Hedefler %{value} azaltıldı.',
     },
     errors: {
       generic: 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
@@ -1906,6 +2002,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Light',
       themeDark: 'Dark',
       themeSystem: 'System',
+      version: 'Version v{version}',
     },
     sessions: {
       title: 'My sessions',
@@ -2103,7 +2200,6 @@ export const translations: Record<Locale, TranslationShape> = {
       deleteInUse:
         '{count} KPI plans were built from this template, so it cannot be deleted. You can deactivate it instead.',
       copy: 'Create a copy',
-      copying: 'Copying…',
       copyHint: 'The last saved version is copied with all of its KPIs.',
       copyError: 'Could not copy the template.',
       copiedNotice: 'Copied from “{name}”. You can edit its name and details and save.',
@@ -2248,8 +2344,7 @@ export const translations: Record<Locale, TranslationShape> = {
       employeeSearch: 'Search employees',
       assignSubmit: 'Create plans',
       assigned: '{count} employees got a plan.',
-      copyFrom: 'Copy from {period}',
-      copyConfirm: 'Copy the plans of {period} with their targets?',
+      copyFrom: 'Copy from another period',
       copied: '{created} plans copied, {skipped} employees skipped.',
       copiedNone: 'No plan could be copied.',
       loading: 'Loading…',
@@ -2659,6 +2754,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} {current}, {previousYear} {previous}',
       month: 'Month',
       change: 'Change',
+      sort: 'Sort',
+      changeBasis: 'Change shown above the bars',
+      vsPreviousYear: 'vs previous year',
+      vsPreviousMonth: 'vs previous month',
       storesTitle: 'Store comparison',
       storesHint: 'Ranked by growth over the compared months.',
       singleStore: 'Only one store has sales in these years.',
@@ -2677,6 +2776,51 @@ export const translations: Record<Locale, TranslationShape> = {
         conversion: 'Conversion',
         visitors: 'Visitors',
       },
+    },
+    kpiCopy: {
+      changeLabel: 'Target change',
+      decrease: 'Decrease by one point',
+      increase: 'Increase by one point',
+      presets: 'Quick percentages',
+      summaryKeep: 'Targets are copied as they are.',
+      summaryUp: 'Every target goes up by {value}%.',
+      summaryDown: 'Every target goes down by {value}%.',
+      rangeError: 'Enter a percentage between {min} and {max}, with at most two decimals.',
+      roundingNote:
+        'Money and count targets are rounded to whole numbers; percentage targets never pass 100. Rows without a target stay empty.',
+      previewTitle: 'Preview',
+      previewTargets: '{targets} of {items} KPIs have a target',
+      previewLoading: 'Loading the preview…',
+      previewError: 'Could not load the preview; copying still works.',
+      noTarget: 'No target, stays empty',
+      noDefaultTargets: 'This template has no default targets, so neither will the copy.',
+      capped: 'max 100%',
+      weight: 'Weight {value}',
+      templateTitle: 'Copy template',
+      templatesTitle: 'Copy {count} templates',
+      templateSource: '“{name}” is copied with all of its KPIs as a new template.',
+      nameLabel: 'Name of the new template',
+      nameHint: 'Leave it empty to get the next number, e.g. “{name}”.',
+      namePlaceholder: 'Automatic',
+      templatesList: 'Templates to copy',
+      moreTemplates: '+{count} more',
+      templatesNameHint: 'Each copy gets the next number in its name, such as “(2)”.',
+      copyTemplate: 'Copy',
+      copyTemplates: 'Copy {count} templates',
+      copying: 'Copying…',
+      plansTitle: 'Copy plans',
+      sourceLabel: 'Copy from',
+      targetLabel: 'Into this period',
+      sampleTitle: 'Example plan',
+      sourceEmpty: 'The selected period has no plans to copy.',
+      samplePosition: '{index} of {total}',
+      previousSample: 'Previous example',
+      nextSample: 'Next example',
+      skipNote:
+        'Employees who already have a plan in this period, are inactive or have no Tiger link are skipped.',
+      copyPlans: 'Copy plans',
+      changedUp: 'Targets raised by {value}%.',
+      changedDown: 'Targets lowered by {value}%.',
     },
     errors: {
       generic: 'An unexpected error occurred. Please try again.',
@@ -2812,6 +2956,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Светлая',
       themeDark: 'Тёмная',
       themeSystem: 'Системная',
+      version: 'Версия v{version}',
     },
     sessions: {
       title: 'Мои сессии',
@@ -3010,7 +3155,6 @@ export const translations: Record<Locale, TranslationShape> = {
       deleteInUse:
         'По этому шаблону создано планов KPI: {count}, поэтому его нельзя удалить. Его можно деактивировать.',
       copy: 'Создать копию',
-      copying: 'Копирование…',
       copyHint: 'Копируется последняя сохранённая версия со всеми KPI.',
       copyError: 'Не удалось скопировать шаблон.',
       copiedNotice: 'Скопировано из «{name}». Можно изменить название и данные и сохранить.',
@@ -3156,8 +3300,7 @@ export const translations: Record<Locale, TranslationShape> = {
       employeeSearch: 'Поиск сотрудника',
       assignSubmit: 'Создать планы',
       assigned: 'Планы получили сотрудников: {count}.',
-      copyFrom: 'Копировать из {period}',
-      copyConfirm: 'Скопировать планы периода {period} вместе с целями?',
+      copyFrom: 'Копировать из другого периода',
       copied: 'Скопировано планов: {created}, пропущено сотрудников: {skipped}.',
       copiedNone: 'Подходящих планов для копирования нет.',
       loading: 'Загрузка…',
@@ -3567,6 +3710,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} — {current}, {previousYear} — {previous}',
       month: 'Месяц',
       change: 'Изменение',
+      sort: 'Сортировка',
+      changeBasis: 'Изменение над столбцами',
+      vsPreviousYear: 'К прошлому году',
+      vsPreviousMonth: 'К прошлому месяцу',
       storesTitle: 'Сравнение магазинов',
       storesHint: 'По росту за сравниваемые месяцы.',
       singleStore: 'В эти годы продажи есть только у одного магазина.',
@@ -3585,6 +3732,51 @@ export const translations: Record<Locale, TranslationShape> = {
         conversion: 'Конверсия',
         visitors: 'Посетители',
       },
+    },
+    kpiCopy: {
+      changeLabel: 'Изменение целей',
+      decrease: 'Уменьшить на один пункт',
+      increase: 'Увеличить на один пункт',
+      presets: 'Быстрый выбор',
+      summaryKeep: 'Цели копируются без изменений.',
+      summaryUp: 'Каждая цель увеличится на {value}%.',
+      summaryDown: 'Каждая цель уменьшится на {value}%.',
+      rangeError: 'Введите процент от {min} до {max}, не более двух знаков после запятой.',
+      roundingNote:
+        'Денежные и количественные цели округляются до целых; процентные цели не превышают 100. Строки без цели остаются пустыми.',
+      previewTitle: 'Предпросмотр',
+      previewTargets: 'Цели заданы: {targets} из {items} KPI',
+      previewLoading: 'Загрузка предпросмотра…',
+      previewError: 'Не удалось загрузить предпросмотр; копирование всё равно работает.',
+      noTarget: 'Цели нет, останется пустой',
+      noDefaultTargets: 'В шаблоне нет целей по умолчанию, в копии их тоже не будет.',
+      capped: 'не более 100%',
+      weight: 'Вес {value}',
+      templateTitle: 'Копировать шаблон',
+      templatesTitle: 'Копировать шаблоны: {count}',
+      templateSource: '«{name}» копируется со всеми KPI как новый шаблон.',
+      nameLabel: 'Название нового шаблона',
+      nameHint: 'Если оставить пустым, добавится следующий номер, например «{name}».',
+      namePlaceholder: 'Автоматически',
+      templatesList: 'Копируемые шаблоны',
+      moreTemplates: 'и ещё {count}',
+      templatesNameHint: 'К названию каждой копии добавится следующий номер, например «(2)».',
+      copyTemplate: 'Копировать',
+      copyTemplates: 'Копировать: {count}',
+      copying: 'Копирование…',
+      plansTitle: 'Копировать планы',
+      sourceLabel: 'Откуда',
+      targetLabel: 'Куда',
+      sampleTitle: 'Пример плана',
+      sourceEmpty: 'В выбранном периоде нет планов для копирования.',
+      samplePosition: '{index} из {total}',
+      previousSample: 'Предыдущий пример',
+      nextSample: 'Следующий пример',
+      skipNote:
+        'Сотрудники, у которых уже есть план в этом периоде, неактивные или без привязки к Tiger, пропускаются.',
+      copyPlans: 'Копировать планы',
+      changedUp: 'Цели увеличены на {value}%.',
+      changedDown: 'Цели уменьшены на {value}%.',
     },
     errors: {
       generic: 'Произошла непредвиденная ошибка. Попробуйте ещё раз.',
@@ -3720,6 +3912,7 @@ export const translations: Record<Locale, TranslationShape> = {
       themeLight: 'Açyk',
       themeDark: 'Goýy',
       themeSystem: 'Ulgam',
+      version: 'Wersiýa v{version}',
     },
     sessions: {
       title: 'Meniň sessiýalarym',
@@ -3918,7 +4111,6 @@ export const translations: Record<Locale, TranslationShape> = {
       deleteInUse:
         'Bu şablondan {count} KPI meýilnamasy döredilipdir, şonuň üçin pozulyp bilinmeýär. Ony passiwleşdirip bilersiňiz.',
       copy: 'Nusgasyny döret',
-      copying: 'Nusgalanýar…',
       copyHint: 'Iň soňky saklanan görnüşi ähli KPI-lary bilen nusgalanýar.',
       copyError: 'Şablony nusgalap bolmady.',
       copiedNotice:
@@ -4066,8 +4258,7 @@ export const translations: Record<Locale, TranslationShape> = {
       employeeSearch: 'Işgär gözle',
       assignSubmit: 'Meýilnama döret',
       assigned: '{count} işgäre meýilnama berildi.',
-      copyFrom: '{period} aýyndan göçür',
-      copyConfirm: '{period} döwrüniň meýilnamalary maksatlary bilen göçürilsinmi?',
+      copyFrom: 'Başga döwürden göçür',
       copied: '{created} meýilnama göçürildi, {skipped} işgär geçildi.',
       copiedNone: 'Göçürmäge amatly meýilnama tapylmady.',
       loading: 'Ýüklenýär…',
@@ -4478,6 +4669,10 @@ export const translations: Record<Locale, TranslationShape> = {
       monthAria: '{month}: {year} {current}, {previousYear} {previous}',
       month: 'Aý',
       change: 'Üýtgeşme',
+      sort: 'Tertip',
+      changeBasis: 'Sütünleriň üstündäki üýtgeşme',
+      vsPreviousYear: 'Öňki ýyla görä',
+      vsPreviousMonth: 'Öňki aýa görä',
       storesTitle: 'Dükanlaryň deňeşdirmesi',
       storesHint: 'Deňeşdirilýän aýlardaky ösüşe görä tertiplenen.',
       singleStore: 'Bu ýyllarda diňe bir dükanyň satuwy bar.',
@@ -4496,6 +4691,51 @@ export const translations: Record<Locale, TranslationShape> = {
         conversion: 'Konwersiýa',
         visitors: 'Gelýänler',
       },
+    },
+    kpiCopy: {
+      changeLabel: 'Maksatlaryň üýtgemegi',
+      decrease: 'Bir bal azalt',
+      increase: 'Bir bal artdyr',
+      presets: 'Taýýar göterimler',
+      summaryKeep: 'Maksatlar bolşy ýaly göçürilýär.',
+      summaryUp: 'Her maksat {value}% artdyrylýar.',
+      summaryDown: 'Her maksat {value}% azaldylýar.',
+      rangeError: '{min} bilen {max} aralygynda, iň köp iki onluk belgili göterim ýazyň.',
+      roundingNote:
+        'Pul we san maksatlary bitin sana tegelekleýär; göterim maksatlary 100-den geçmeýär. Maksady boş setirler boş galýar.',
+      previewTitle: 'Öňünden görmek',
+      previewTargets: '{items} KPI-dan {targets}-synyň maksady bar',
+      previewLoading: 'Öňünden görnüş ýüklenýär…',
+      previewError: 'Öňünden görnüş ýüklenmedi; göçürmek barybir işleýär.',
+      noTarget: 'Maksat ýok, boş galýar',
+      noDefaultTargets: 'Bu şablonda deslapky maksat ýok, nusgada hem bolmaz.',
+      capped: 'iň köp 100%',
+      weight: 'Agram {value}',
+      templateTitle: 'Şablony nusgala',
+      templatesTitle: '{count} şablony nusgala',
+      templateSource: '“{name}” ähli KPI-lary bilen täze şablon hökmünde nusgalanýar.',
+      nameLabel: 'Täze şablonyň ady',
+      nameHint: 'Boş goýsaňyz, indiki belgi goşulýar, mysal üçin “{name}”.',
+      namePlaceholder: 'Awtomatik',
+      templatesList: 'Nusgalanjak şablonlar',
+      moreTemplates: 'ýene {count}',
+      templatesNameHint: 'Her nusganyň adyna “(2)” ýaly indiki belgi goşulýar.',
+      copyTemplate: 'Nusgala',
+      copyTemplates: '{count} şablony nusgala',
+      copying: 'Göçürilýär…',
+      plansTitle: 'Meýilnamalary göçür',
+      sourceLabel: 'Nireden',
+      targetLabel: 'Nirä',
+      sampleTitle: 'Mysal meýilnama',
+      sourceEmpty: 'Saýlanan döwürde göçüriljek meýilnama ýok.',
+      samplePosition: '{index} / {total}',
+      previousSample: 'Öňki mysal',
+      nextSample: 'Indiki mysal',
+      skipNote:
+        'Bu döwürde meýilnamasy bar, işjeň däl ýa-da Tiger baglanyşygy ýok işgärler geçilýär.',
+      copyPlans: 'Meýilnamalary göçür',
+      changedUp: 'Maksatlar {value}% artdyryldy.',
+      changedDown: 'Maksatlar {value}% azaldyldy.',
     },
     errors: {
       generic: 'Garaşylmadyk ýalňyşlyk ýüze çykdy. Gaýtadan synanyşyň.',

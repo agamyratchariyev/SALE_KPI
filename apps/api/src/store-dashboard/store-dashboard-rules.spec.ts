@@ -64,6 +64,8 @@ void test('compares only finished months that have values in both years', () => 
     current: 150,
     previous: 100,
     growthPercent: 50,
+    previousMonth: null,
+    previousMonthGrowthPercent: null,
   });
   // May had sales last year only; August this year only; September is still running.
   assert.equal(months[4]?.growthPercent, null);
@@ -74,6 +76,8 @@ void test('compares only finished months that have values in both years', () => 
     current: 20,
     previous: 400,
     growthPercent: null,
+    previousMonth: null,
+    previousMonthGrowthPercent: null,
   });
   assert.equal(months[9]?.status, 'upcoming');
 
@@ -88,6 +92,36 @@ void test('compares only finished months that have values in both years', () => 
     previousYearValue: 750,
     previousYearMonths: 4,
   });
+});
+
+void test('a finished month is compared with the month before; January with last December', () => {
+  const values = amounts([
+    ['2025-12', 80],
+    ['2026-01', 100],
+    ['2026-02', 125],
+    ['2026-03', 100],
+    ['2026-05', 60],
+    ['2026-07', 0],
+    ['2026-08', 50],
+    ['2026-09', 30],
+  ]);
+  const { months } = compareYears(values, 2026, '2026-09', 'sum');
+  const change = (month: number) => {
+    const entry = months[month - 1];
+
+    return [entry?.previousMonth, entry?.previousMonthGrowthPercent];
+  };
+
+  assert.deepEqual(change(1), [80, 25]);
+  assert.deepEqual(change(2), [100, 25]);
+  assert.deepEqual(change(3), [125, -20]);
+  // April has no value; May has no month before; August has a zero base.
+  assert.deepEqual(change(4), [100, null]);
+  assert.deepEqual(change(5), [null, null]);
+  assert.deepEqual(change(8), [0, null]);
+  // September is still running, October lies ahead.
+  assert.deepEqual(change(9), [null, null]);
+  assert.deepEqual(change(10), [null, null]);
 });
 
 void test('distinct counts compare monthly averages; growth equals the sum comparison', () => {

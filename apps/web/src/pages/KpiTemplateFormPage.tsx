@@ -4,7 +4,6 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { listKpiDefinitions } from '../api/kpi-definitions';
 import {
-  copyKpiTemplate,
   createKpiTemplate,
   deactivateKpiTemplate,
   deleteKpiTemplate,
@@ -12,9 +11,11 @@ import {
   updateKpiTemplate,
 } from '../api/kpi-templates';
 import { AppShell } from '../components/AppShell';
+import { CopyKpiTemplateModal } from '../components/CopyKpiTemplateModal';
 import { FormField, formInputClassName } from '../components/FormField';
 import { KpiTemplateItemEditor } from '../components/KpiTemplateItemEditor';
 import { Spinner } from '../components/Spinner';
+import { describeTargetChange } from '../components/TargetChange';
 import { localizeApiError } from '../i18n/api-errors';
 import { formatNumber } from '../i18n/formatters';
 import { useTranslation, type Translate } from '../i18n/locale-store';
@@ -107,6 +108,8 @@ function newDraft(): TemplateDraft {
 
 interface CopyNavigationState {
   copiedFrom?: string;
+  /** How much the copy changed the default targets (ADR-070). */
+  targetChangePercent?: number;
 }
 
 export function KpiTemplateFormPage({ mode }: { mode: 'create' | 'edit' }) {
@@ -121,7 +124,10 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
   const location = useLocation();
   const queryClient = useQueryClient();
   const { t, locale } = useTranslation();
-  const copiedFrom = (location.state as CopyNavigationState | null)?.copiedFrom;
+  const copyState = location.state as CopyNavigationState | null;
+  const copiedFrom = copyState?.copiedFrom;
+  const copiedChange = describeTargetChange(copyState?.targetChangePercent ?? 0, t, locale);
+  const [copyOpen, setCopyOpen] = useState(false);
 
   const [draft, setDraft] = useState<TemplateDraft>(newDraft);
   const [draftError, setDraftError] = useState<DraftError | null>(null);
@@ -191,18 +197,13 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
     onSuccess: refreshTemplates,
   });
 
-  // Copies the saved version on the server, then opens the copy for editing.
-  const copyMutation = useMutation({
-    mutationFn: async (sourceName: string) => ({
-      copy: await copyKpiTemplate(id as string),
-      sourceName,
-    }),
-    onSuccess: async ({ copy, sourceName }) => {
-      await refreshTemplates();
-      const state: CopyNavigationState = { copiedFrom: sourceName };
-      void navigate(`/kpi-templates/${copy.id}`, { state });
-    },
-  });
+  // The modal copies the saved version on the server; then the copy opens for editing.
+  async function openCopy(copyId: string, sourceName: string, targetChangePercent: number) {
+    setCopyOpen(false);
+    await refreshTemplates();
+    const state: CopyNavigationState = { copiedFrom: sourceName, targetChangePercent };
+    void navigate(`/kpi-templates/${copyId}`, { state });
+  }
 
   function resetFeedback() {
     setDraftError(null);
@@ -210,7 +211,6 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
     deactivateMutation.reset();
     deleteMutation.reset();
     reactivateMutation.reset();
-    copyMutation.reset();
   }
   async function removeTemplate(name: string) {
     resetFeedback();
@@ -286,9 +286,7 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
           ? localizeApiError(deactivateMutation.error, t, 'kpiTemplateForm.deactivateError')
           : reactivateMutation.isError
             ? describeSaveError(reactivateMutation.error, t, locale)
-            : copyMutation.isError
-              ? localizeApiError(copyMutation.error, t, 'kpiTemplateForm.copyError')
-              : null;
+            : null;
 
   return (
     <AppShell
@@ -319,6 +317,7 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
               className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-200"
             >
               {t('kpiTemplateForm.copiedNotice', { name: copiedFrom })}
+              {copiedChange ? ` ${copiedChange}` : ''}
             </p>
           ) : null}
 
@@ -428,29 +427,24 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
             <div className="mt-2">
               <button
                 type="button"
-                disabled={copyMutation.isPending}
                 onClick={() => {
                   resetFeedback();
-                  copyMutation.mutate(template.name);
+                  setCopyOpen(true);
                 }}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 text-base font-semibold text-emerald-700 transition hover:bg-emerald-400/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
               >
-                {copyMutation.isPending ? (
-                  <Spinner />
-                ) : (
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-5 w-5"
-                  >
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15V6a2 2 0 0 1 2-2h9" strokeLinecap="round" />
-                  </svg>
-                )}
-                {copyMutation.isPending ? t('kpiTemplateForm.copying') : t('kpiTemplateForm.copy')}
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-5 w-5"
+                >
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path d="M5 15V6a2 2 0 0 1 2-2h9" strokeLinecap="round" />
+                </svg>
+                {t('kpiTemplateForm.copy')}
               </button>
               <p className="mt-1 text-center text-xs text-slate-500 dark:text-slate-400">
                 {t('kpiTemplateForm.copyHint')}
@@ -530,6 +524,18 @@ function KpiTemplateForm({ mode, id }: { mode: 'create' | 'edit'; id: string | u
           </div>
         </form>
       )}
+
+      {copyOpen && template ? (
+        <CopyKpiTemplateModal
+          templates={[template]}
+          onClose={() => setCopyOpen(false)}
+          onCopied={([copy], targetChangePercent) => {
+            if (copy) {
+              void openCopy(copy.id, template.name, targetChangePercent);
+            }
+          }}
+        />
+      ) : null}
     </AppShell>
   );
 }

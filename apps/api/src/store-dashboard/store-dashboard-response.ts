@@ -40,6 +40,24 @@ export class StoreDashboardMonthResponse {
     description: 'Yüzde değişim, bir ondalık. Yalnız bitmiş ve geçen yılı pozitif olan ayda dolu.',
   })
   growthPercent: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 178969,
+    description:
+      'Bir önceki ayın değeri (Ocak için önceki yılın Aralık ayı). Yalnız bitmiş ayda dolu.',
+  })
+  previousMonth: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 76.9,
+    description:
+      'Önceki aya göre yüzde değişim, bir ondalık. Yalnız bitmiş ve önceki ayı pozitif olan ayda dolu.',
+  })
+  previousMonthGrowthPercent: number | null;
 }
 
 export class StoreDashboardSummaryResponse {
