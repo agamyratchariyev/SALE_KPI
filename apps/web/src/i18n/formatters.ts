@@ -63,3 +63,18 @@ export function formatShortDate(value: string, locale: Locale): string {
     timeZone: 'UTC',
   }).format(new Date(`${value}T00:00:00Z`));
 }
+
+/** Two calendar days as one range, e.g. "9–15 Kas" or, with the year, "9–15 Kasım 2026". */
+export function formatDateRange(
+  start: string,
+  end: string,
+  locale: Locale,
+  withYear = false,
+): string {
+  return new Intl.DateTimeFormat(LOCALE_TAGS[locale], {
+    day: 'numeric',
+    month: withYear ? 'long' : 'short',
+    ...(withYear ? { year: 'numeric' as const } : {}),
+    timeZone: 'UTC',
+  }).formatRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`));
+}

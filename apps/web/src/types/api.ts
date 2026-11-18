@@ -779,3 +779,48 @@ export interface StoreDashboardResponse {
   stores: { nr: number; name: string | null }[];
   kpis: StoreDashboardKpi[];
 }
+
+/** The store dashboard's weekly view (ADR-071): Monday-to-Sunday weeks, analysis only. */
+export interface StoreDashboardWeek {
+  /** The Monday, `YYYY-MM-DD`. */
+  weekStart: string;
+  /** The Sunday. */
+  weekEnd: string;
+  status: 'complete' | 'inProgress';
+  /** Null when the store had no sales documents that week. */
+  value: number | null;
+  previousWeek: number | null;
+  previousWeekGrowthPercent: number | null;
+  /** The four weeks before, averaged; only when all four have a value. */
+  fourWeekAverage: number | null;
+  fourWeekGrowthPercent: number | null;
+}
+
+export interface StoreDashboardWeekComparison {
+  /** Tiger iş yeri number; null for all stores together. */
+  storeNr: number | null;
+  /** Oldest first; the last one is the running week. */
+  weeks: StoreDashboardWeek[];
+}
+
+export interface StoreDashboardWeekKpi {
+  code: string;
+  name: LocalizedText;
+  unit: KpiUnit;
+  aggregation: StoreDashboardKpi['aggregation'];
+  series: {
+    currency: 'TMT' | 'USD' | null;
+    total: StoreDashboardWeekComparison;
+    /** Same order as `StoreDashboardWeeklyResponse.stores`. */
+    stores: StoreDashboardWeekComparison[];
+  }[];
+}
+
+export interface StoreDashboardWeeklyResponse {
+  /** The Monday of the running week. */
+  currentWeek: string;
+  lastCompleteWeek: string;
+  refresh: StoreDashboardResponse['refresh'];
+  stores: StoreDashboardResponse['stores'];
+  kpis: StoreDashboardWeekKpi[];
+}

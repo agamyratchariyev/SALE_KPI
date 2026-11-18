@@ -58,11 +58,9 @@ export const MONTH_STATUSES = ['complete', 'inProgress', 'upcoming'] as const;
 
 export type MonthStatus = (typeof MONTH_STATUSES)[number];
 
-/** One month of one store KPI: a `dbo.kpi_month_values` row, or the measured conversion. */
-export interface StoreMonthValue {
+/** One stored value of one store KPI, for whatever period it covers. */
+export interface StoreKpiValue {
   storeNr: number;
-  /** `YYYY-MM-01`. */
-  monthStart: string;
   kpiCode: string;
   currency: string | null;
   value: number;
@@ -70,6 +68,12 @@ export interface StoreMonthValue {
   numerator: number | null;
   /** Rates only: visitors, always positive; null for every other KPI. */
   denominator: number | null;
+}
+
+/** One month of one store KPI: a `dbo.kpi_month_values` row, or the measured conversion. */
+export interface StoreMonthValue extends StoreKpiValue {
+  /** `YYYY-MM-01`. */
+  monthStart: string;
 }
 
 /** A month's value with, for a rate, the parts it divides. */
@@ -151,7 +155,7 @@ export function growthPercent(current: number | null, previous: number | null): 
 }
 
 /** The parts added up, divided; null when no amount has them. */
-function ratioOf(amounts: readonly MonthAmount[]): number | null {
+export function ratioOf(amounts: readonly MonthAmount[]): number | null {
   let numerator = 0;
   let denominator = 0;
 
@@ -258,13 +262,14 @@ export function compareYears(
 }
 
 /**
- * Monthly amounts (`YYYY-MM` → amount) of one KPI and currency: one store, or with
- * `storeNr` null every store added together. Adding stores is exact for sales, receipts, new
- * customers and visitors; a customer who shopped in two stores counts twice in the other
- * counts. A rate adds its parts and divides them again.
+ * Amounts per period of one KPI and currency: one store, or with `storeNr` null every store
+ * added together. Adding stores is exact for sales, receipts, new customers and visitors; a
+ * customer who shopped in two stores counts twice in the other counts. A rate adds its parts
+ * and divides them again.
  */
-export function monthlyValues(
-  rows: readonly StoreMonthValue[],
+export function valuesByPeriod<Row extends StoreKpiValue>(
+  rows: readonly Row[],
+  periodOf: (row: Row) => string,
   kpiCode: string,
   currency: string | null,
   storeNr: number | null,
@@ -281,7 +286,7 @@ export function monthlyValues(
       continue;
     }
 
-    const key = row.monthStart.slice(0, 7);
+    const key = periodOf(row);
     const sum = values.get(key) ?? { value: 0, parts: null };
     const parts =
       row.numerator !== null && row.denominator !== null
@@ -303,8 +308,26 @@ export function monthlyValues(
   return values;
 }
 
-function rowKey(row: StoreMonthValue): string {
-  return [row.monthStart, String(row.storeNr), row.kpiCode, row.currency ?? ''].join('|');
+/** Monthly amounts (`YYYY-MM` → amount); see `valuesByPeriod`. */
+export function monthlyValues(
+  rows: readonly StoreMonthValue[],
+  kpiCode: string,
+  currency: string | null,
+  storeNr: number | null,
+  aggregation: StoreDashboardAggregation,
+): Map<string, MonthAmount> {
+  return valuesByPeriod(
+    rows,
+    (row) => row.monthStart.slice(0, 7),
+    kpiCode,
+    currency,
+    storeNr,
+    aggregation,
+  );
+}
+
+function rowKey<Row extends StoreKpiValue>(row: Row, periodOf: (row: Row) => string): string {
+  return [periodOf(row), String(row.storeNr), row.kpiCode, row.currency ?? ''].join('|');
 }
 
 /** decimal(19, 4): values closer than this are the same stored value. */
@@ -316,25 +339,26 @@ function sameNumber(left: number | null, right: number | null): boolean {
     : Math.abs(left - right) < VALUE_TOLERANCE;
 }
 
-export interface RefreshPlan {
-  inserts: StoreMonthValue[];
+export interface RefreshPlan<Row extends StoreKpiValue = StoreMonthValue> {
+  inserts: Row[];
   updates: { id: string; value: number; numerator: number | null; denominator: number | null }[];
   deleteIds: string[];
 }
 
 /**
  * What a refresh writes: new values are inserted, changed ones updated, and values Tiger no
- * longer has (a store without documents that month) deleted. Unchanged rows are not touched.
+ * longer has (a store without documents in the period) deleted. Unchanged rows are not touched.
  */
-export function planRefresh(
-  stored: readonly StoredStoreMonthValue[],
-  fresh: readonly StoreMonthValue[],
-): RefreshPlan {
-  const byKey = new Map(stored.map((row) => [rowKey(row), row]));
-  const plan: RefreshPlan = { inserts: [], updates: [], deleteIds: [] };
+export function planValueRefresh<Row extends StoreKpiValue>(
+  stored: readonly (Row & { id: string })[],
+  fresh: readonly Row[],
+  periodOf: (row: Row) => string,
+): RefreshPlan<Row> {
+  const byKey = new Map(stored.map((row) => [rowKey<Row>(row, periodOf), row]));
+  const plan: RefreshPlan<Row> = { inserts: [], updates: [], deleteIds: [] };
 
   for (const row of fresh) {
-    const key = rowKey(row);
+    const key = rowKey(row, periodOf);
     const existing = byKey.get(key);
 
     if (!existing) {
@@ -361,4 +385,12 @@ export function planRefresh(
   plan.deleteIds = [...byKey.values()].map((row) => row.id);
 
   return plan;
+}
+
+/** `planValueRefresh` for the monthly values. */
+export function planRefresh(
+  stored: readonly StoredStoreMonthValue[],
+  fresh: readonly StoreMonthValue[],
+): RefreshPlan {
+  return planValueRefresh(stored, fresh, (row) => row.monthStart);
 }

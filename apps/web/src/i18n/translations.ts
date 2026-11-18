@@ -854,6 +854,37 @@ interface TranslationShape {
     openKpi: string;
     customersNote: string;
     ratioNote: string;
+    /** The weekly view (ADR-071). */
+    viewLabel: string;
+    viewMonthly: string;
+    viewWeekly: string;
+    weeksRange: string;
+    weeksOption: string;
+    lastCompleteWeek: string;
+    runningWeek: string;
+    selectedWeek: string;
+    weekCompareNote: string;
+    weekInProgressNote: string;
+    previousWeekAction: string;
+    nextWeekAction: string;
+    vsPreviousWeek: string;
+    vsFourWeeks: string;
+    previousWeekShort: string;
+    fourWeeksShort: string;
+    week: string;
+    value: string;
+    weekBasis: string;
+    weeklyListTitle: string;
+    weeklyChartTitle: string;
+    weeklyChartHint: string;
+    fourWeekLine: string;
+    weekAria: string;
+    weekStoresHint: string;
+    weeklyEmpty: string;
+    weeklyAnalysisNote: string;
+    weeklyDistinctNote: string;
+    weeklyConversionNote: string;
+    weeklyVisitorNote: string;
     /** Short names on the tabs and cards, next to each KPI's icon. */
     kpiShort: {
       sales: string;
@@ -1812,6 +1843,40 @@ export const translations: Record<Locale, TranslationShape> = {
         'Mağazalar toplanırken iki mağazada da görülen müşteri ya da ürün iki kez sayılır.',
       ratioNote:
         "Dönüşüm yalnız ziyaretçi sayısı girilmiş günlerden hesaplanır: o günlerin satış fişleri ÷ ziyaretçileri. Günlerinin %80'inden azına sayı girilen ay ölçülmez (—). Mağazalar ve aylar birleşirken fişler ve ziyaretçiler önce toplanır, sonra bölünür.",
+      viewLabel: 'Görünüm',
+      viewMonthly: 'Aylık',
+      viewWeekly: 'Haftalık',
+      weeksRange: 'Hafta sayısı',
+      weeksOption: '{count} hafta',
+      lastCompleteWeek: 'Son bitmiş hafta',
+      runningWeek: 'Bu hafta',
+      selectedWeek: 'Seçili hafta',
+      weekCompareNote: 'Önceki haftayla ve ondan önceki 4 haftanın ortalamasıyla karşılaştırılır.',
+      weekInProgressNote: 'Hafta devam ediyor; karşılaştırmaya girmez.',
+      previousWeekAction: 'Önceki haftaya git',
+      nextWeekAction: 'Sonraki haftaya git',
+      vsPreviousWeek: 'Önceki haftaya göre',
+      vsFourWeeks: '4 hafta ortalamasına göre',
+      previousWeekShort: 'Önceki hafta',
+      fourWeeksShort: '4 hafta ort.',
+      week: 'Hafta',
+      value: 'Değer',
+      weekBasis: 'Değişim sütunu',
+      weeklyListTitle: 'Hafta hafta',
+      weeklyChartTitle: 'Son haftalar',
+      weeklyChartHint: 'Bir haftayı seçmek için dokunun.',
+      fourWeekLine: 'Önceki 4 hafta ortalaması: {value}',
+      weekAria: '{week}: {value}',
+      weekStoresHint: 'Seçili haftanın değerine göre sıralı.',
+      weeklyEmpty: 'Henüz saklanmış haftalık değer yok. Değerler ilk güncellemede gelir.',
+      weeklyAnalysisNote:
+        'Haftalar pazartesiden pazara sayılır ve yalnız analiz içindir; resmî KPI puanını ve maaşı etkilemez.',
+      weeklyDistinctNote:
+        'Bu değer hafta içinde tekil sayılır; haftaların toplamı ayın değerini vermez.',
+      weeklyConversionNote:
+        'Dönüşüm, ziyaretçi sayısı girilmiş günlerden hesaplanır. Haftanın en az 6 gününe sayı girilmezse ölçülmez (—).',
+      weeklyVisitorNote:
+        'Yalnız sayı girilmiş günler toplanır; eksik gün haftanın toplamını düşürür.',
       kpiShort: {
         sales: 'Ciro',
         receipts: 'Fiş',
@@ -2766,6 +2831,40 @@ export const translations: Record<Locale, TranslationShape> = {
         'When stores are added together, a customer or item seen in two stores counts twice.',
       ratioNote:
         'Conversion counts only days with an entered visitor count: their sales receipts ÷ their visitors. A month with counts on fewer than 80% of its days is not measured (—). Stores and months are combined by adding receipts and visitors first, then dividing.',
+      viewLabel: 'View',
+      viewMonthly: 'Monthly',
+      viewWeekly: 'Weekly',
+      weeksRange: 'Number of weeks',
+      weeksOption: '{count} weeks',
+      lastCompleteWeek: 'Last finished week',
+      runningWeek: 'This week',
+      selectedWeek: 'Selected week',
+      weekCompareNote: 'Compared with the week before and the average of the 4 weeks before it.',
+      weekInProgressNote: 'The week is still in progress and is not compared.',
+      previousWeekAction: 'Go to the previous week',
+      nextWeekAction: 'Go to the next week',
+      vsPreviousWeek: 'vs previous week',
+      vsFourWeeks: 'vs 4-week average',
+      previousWeekShort: 'Prev. week',
+      fourWeeksShort: '4-week avg',
+      week: 'Week',
+      value: 'Value',
+      weekBasis: 'Change column',
+      weeklyListTitle: 'Week by week',
+      weeklyChartTitle: 'Recent weeks',
+      weeklyChartHint: 'Tap a week to select it.',
+      fourWeekLine: 'Average of the previous 4 weeks: {value}',
+      weekAria: '{week}: {value}',
+      weekStoresHint: 'Ranked by the selected week’s value.',
+      weeklyEmpty: 'No weekly values are stored yet. They arrive with the first refresh.',
+      weeklyAnalysisNote:
+        'Weeks run Monday to Sunday and are for analysis only; they do not affect official KPI scores or salaries.',
+      weeklyDistinctNote:
+        'This value is counted once per week, so the weeks do not add up to the month’s value.',
+      weeklyConversionNote:
+        'Conversion uses the days with an entered visitor count. A week with fewer than 6 such days is not measured (—).',
+      weeklyVisitorNote:
+        'Only days with an entered count are added up; a missing day lowers the week’s total.',
       kpiShort: {
         sales: 'Sales',
         receipts: 'Receipts',
@@ -3722,6 +3821,40 @@ export const translations: Record<Locale, TranslationShape> = {
         'При сложении магазинов покупатель или товар, встречающийся в двух магазинах, учитывается дважды.',
       ratioNote:
         'Конверсия считается только по дням с введённым числом посетителей: чеки продаж этих дней ÷ их посетители. Месяц, где число введено менее чем за 80% дней, не измеряется (—). При объединении магазинов и месяцев сначала складываются чеки и посетители, затем делятся.',
+      viewLabel: 'Вид',
+      viewMonthly: 'По месяцам',
+      viewWeekly: 'По неделям',
+      weeksRange: 'Количество недель',
+      weeksOption: '{count} нед.',
+      lastCompleteWeek: 'Последняя завершённая неделя',
+      runningWeek: 'Эта неделя',
+      selectedWeek: 'Выбранная неделя',
+      weekCompareNote: 'Сравнение с предыдущей неделей и средним за 4 недели до неё.',
+      weekInProgressNote: 'Неделя ещё идёт и в сравнение не входит.',
+      previousWeekAction: 'К предыдущей неделе',
+      nextWeekAction: 'К следующей неделе',
+      vsPreviousWeek: 'К прошлой неделе',
+      vsFourWeeks: 'К среднему за 4 недели',
+      previousWeekShort: 'Пред. нед.',
+      fourWeeksShort: 'Сред. 4 нед.',
+      week: 'Неделя',
+      value: 'Значение',
+      weekBasis: 'Столбец изменения',
+      weeklyListTitle: 'По неделям',
+      weeklyChartTitle: 'Последние недели',
+      weeklyChartHint: 'Нажмите на неделю, чтобы выбрать её.',
+      fourWeekLine: 'Среднее за 4 предыдущие недели: {value}',
+      weekAria: '{week}: {value}',
+      weekStoresHint: 'По значению выбранной недели.',
+      weeklyEmpty: 'Недельных значений пока нет. Они появятся при первом обновлении.',
+      weeklyAnalysisNote:
+        'Недели считаются с понедельника по воскресенье и нужны только для анализа; на официальные баллы KPI и зарплату не влияют.',
+      weeklyDistinctNote:
+        'Значение считается уникально за неделю, поэтому сумма недель не равна значению месяца.',
+      weeklyConversionNote:
+        'Конверсия считается по дням с введённым числом посетителей. Если таких дней в неделе меньше 6, она не измеряется (—).',
+      weeklyVisitorNote:
+        'Суммируются только дни с введённым числом; пропущенный день снижает итог недели.',
       kpiShort: {
         sales: 'Выручка',
         receipts: 'Чеки',
@@ -4681,6 +4814,40 @@ export const translations: Record<Locale, TranslationShape> = {
         'Dükanlar goşulanda iki dükanda-da görlen müşderi ýa-da haryt iki gezek sanalýar.',
       ratioNote:
         'Konwersiýa diňe gelýänleriň sany girizilen günlerden hasaplanýar: şol günleriň satuw çekleri ÷ gelýänleri. Günleriniň 80%-den azyna san girizilen aý ölçenilmeýär (—). Dükanlar we aýlar birleşende çekler we gelýänler ilki goşulýar, soňra bölünýär.',
+      viewLabel: 'Görnüş',
+      viewMonthly: 'Aýlyk',
+      viewWeekly: 'Hepdelik',
+      weeksRange: 'Hepde sany',
+      weeksOption: '{count} hepde',
+      lastCompleteWeek: 'Soňky tamamlanan hepde',
+      runningWeek: 'Şu hepde',
+      selectedWeek: 'Saýlanan hepde',
+      weekCompareNote: 'Öňki hepde we ondan öňki 4 hepdäniň ortaçasy bilen deňeşdirilýär.',
+      weekInProgressNote: 'Hepde dowam edýär; deňeşdirmä girmeýär.',
+      previousWeekAction: 'Öňki hepdä geç',
+      nextWeekAction: 'Indiki hepdä geç',
+      vsPreviousWeek: 'Öňki hepdä görä',
+      vsFourWeeks: '4 hepdäniň ortaçasyna görä',
+      previousWeekShort: 'Öňki hepde',
+      fourWeeksShort: '4 hepde ort.',
+      week: 'Hepde',
+      value: 'Baha',
+      weekBasis: 'Üýtgeşme sütüni',
+      weeklyListTitle: 'Hepdeme-hepde',
+      weeklyChartTitle: 'Soňky hepdeler',
+      weeklyChartHint: 'Hepdäni saýlamak üçin basyň.',
+      fourWeekLine: 'Öňki 4 hepdäniň ortaçasy: {value}',
+      weekAria: '{week}: {value}',
+      weekStoresHint: 'Saýlanan hepdäniň bahasyna görä tertiplenen.',
+      weeklyEmpty: 'Entek saklanan hepdelik baha ýok. Bahalar ilkinji täzelenmede geler.',
+      weeklyAnalysisNote:
+        'Hepdeler duşenbeden ýekşenbä çenli sanalýar we diňe seljeriş üçindir; resmi KPI balyna we aýlyga täsir etmeýär.',
+      weeklyDistinctNote:
+        'Bu baha hepdäniň içinde gaýtalanmazdan sanalýar; hepdeleriň jemi aýyň bahasyna deň däl.',
+      weeklyConversionNote:
+        'Öwrülişik diňe gelijiler sany girizilen günlerden hasaplanýar. Hepdäniň azyndan 6 gününe san girizilmese ölçenilmeýär (—).',
+      weeklyVisitorNote:
+        'Diňe san girizilen günler jemlenýär; girizilmedik gün hepdäniň jemini peseldýär.',
       kpiShort: {
         sales: 'Satuw',
         receipts: 'Çekler',
