@@ -7,6 +7,8 @@ import { AppShell } from '../components/AppShell';
 import { CalendarIcon, FilterSelect, StoreIcon } from '../components/FilterSelect';
 import {
   Card,
+  ChangeLine,
+  ChangeMark,
   ChevronRightIcon,
   CurrencySwitch,
   FreshnessLine,
@@ -23,6 +25,7 @@ import {
   growthTone,
   kpiNames,
   storeLabel,
+  tooltipGrowthTone,
   valueDigits,
   type Currency,
   type Translate,
@@ -677,8 +680,8 @@ interface ChangeLabelProps {
 }
 
 /**
- * A month's change above its bars: the arrow on a phone, with the percentage from `sm:`.
- * Hovering it (or focusing the month) tells how much the change is and between which values.
+ * A month's change above its bars. Hovering it (or focusing the month) tells how much the
+ * change is and between which values.
  */
 function ChangeLabel({
   percent,
@@ -690,58 +693,23 @@ function ChangeLabel({
 }: ChangeLabelProps & { bottom: number; align: 'left' | 'center' | 'right' }) {
   const { t, locale } = useTranslation();
   const growth = formatGrowth(percent, locale, t);
-  const tone = percent > 0 ? 'text-emerald-300' : percent < 0 ? 'text-red-300' : 'text-slate-100';
   // The first and last months open the tooltip inwards, so it stays on the screen.
   const position =
     align === 'left' ? 'left-0' : align === 'right' ? 'right-0' : 'left-1/2 -translate-x-1/2';
 
   return (
-    <span
-      className="absolute inset-x-0 flex justify-center"
-      style={{ bottom: `calc(${String(bottom)}% + 1px)` }}
-    >
+    <ChangeMark percent={percent} bottom={bottom}>
       <span
-        className={`group/change relative inline-flex items-center gap-0.5 whitespace-nowrap p-1 text-[11px] font-semibold leading-none tabular-nums ${growthTone(percent)}`}
+        role="tooltip"
+        className={`pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-[16rem] rounded-lg bg-slate-900 px-2.5 py-2 text-left text-[11px] font-normal leading-snug text-slate-300 shadow-lg ring-1 ring-white/10 group-hover/change:block group-focus-visible:block dark:bg-slate-800 ${position}`}
       >
-        {percent === 0 ? null : <TrendArrow up={percent > 0} className="h-3 w-3" />}
-        <span className="hidden sm:inline">
-          {t('storeDashboard.percent', {
-            value: formatNumber(Math.abs(percent), locale, { maximumFractionDigits: 0 }),
-          })}
+        <span className={`block text-xs font-semibold ${tooltipGrowthTone(percent)}`}>
+          {difference === null ? growth : `${difference} · ${growth}`}
         </span>
-        <span
-          role="tooltip"
-          className={`pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max max-w-[16rem] rounded-lg bg-slate-900 px-2.5 py-2 text-left text-[11px] font-normal leading-snug text-slate-300 shadow-lg ring-1 ring-white/10 group-hover/change:block group-focus-visible:block dark:bg-slate-800 ${position}`}
-        >
-          <span className={`block text-xs font-semibold ${tone}`}>
-            {difference === null ? growth : `${difference} · ${growth}`}
-          </span>
-          <span className="mt-1 block">{from}</span>
-          <span className="block">{to}</span>
-        </span>
+        <span className="mt-1 block">{from}</span>
+        <span className="block">{to}</span>
       </span>
-    </span>
-  );
-}
-
-/** One change of the selected month: what it is against, the percentage and how much. */
-function ChangeLine({
-  label,
-  percent,
-  difference,
-}: {
-  label: string;
-  percent: number | null;
-  difference: string | null;
-}) {
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      <span className="text-slate-500 dark:text-slate-400">{`${label}:`}</span>
-      <GrowthBadge value={percent} />
-      {percent !== null && difference !== null ? (
-        <span className={`font-medium tabular-nums ${growthTone(percent)}`}>{difference}</span>
-      ) : null}
-    </span>
+    </ChangeMark>
   );
 }
 

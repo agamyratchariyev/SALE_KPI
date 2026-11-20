@@ -9,7 +9,7 @@ import {
   WEEK_REFRESH_WEEKS,
   addDays,
   compareWeeks,
-  firstBaselineWeek,
+  firstComparedWeek,
   shownWeeks,
   weekDaysBefore,
   weekRefreshWindow,
@@ -63,75 +63,84 @@ void test('the refresh window ends with the running week and starts on a Monday'
   assert.equal(window.from, addDays('2026-11-16', -7 * (WEEK_REFRESH_WEEKS - 1)));
 });
 
-void test('shows the requested weeks and reaches back for their baseline', () => {
+void test('shows the finished weeks and the running one, reaching back one week', () => {
   const weeks = shownWeeks('2026-11-16', 4);
 
-  assert.deepEqual(weeks, ['2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16']);
-  assert.equal(firstBaselineWeek(weeks), '2026-09-28');
+  assert.deepEqual(weeks, ['2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16']);
+  assert.equal(firstComparedWeek(weeks), '2026-10-12');
 });
 
-void test('compares a finished week with the week and the four weeks before', () => {
+const RANGE = ['2026-10-19', '2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16'];
+
+void test('averages every finished week of the range and compares each week with it', () => {
   const values = amounts([
-    ['2026-10-12', 54855],
-    ['2026-10-19', 50296],
-    ['2026-10-26', 40700],
-    ['2026-11-02', 57750],
-    ['2026-11-09', 56460],
+    ['2026-10-12', 100],
+    ['2026-10-19', 50],
+    ['2026-10-26', 40],
+    ['2026-11-02', 60],
+    ['2026-11-09', 50],
+    ['2026-11-16', 9000],
   ]);
-  const [week] = compareWeeks(values, ['2026-11-09'], '2026-11-16', 'sum');
+  const result = compareWeeks(values, RANGE, '2026-11-16', 'sum');
 
-  assert.equal(week?.weekEnd, '2026-11-15');
-  assert.equal(week?.status, 'complete');
-  assert.equal(week?.previousWeek, 57750);
-  assert.equal(week?.previousWeekGrowthPercent, -2.2);
-  assert.equal(week?.fourWeekAverage, 50900.25);
-  assert.equal(week?.fourWeekGrowthPercent, 10.9);
+  assert.equal(result.average, 50);
+  assert.equal(result.averageWeeks, 4);
+  assert.equal(result.weeks[0]?.previousWeekGrowthPercent, -50);
+  assert.equal(result.weeks[0]?.averageGrowthPercent, 0);
+  assert.equal(result.weeks[2]?.averageGrowthPercent, 20);
+  assert.equal(result.weeks[3]?.weekEnd, '2026-11-15');
 });
 
-void test('the running week is shown but not compared', () => {
+void test('the running week is shown but neither compared nor averaged', () => {
   const values = amounts([
     ['2026-11-09', 100],
     ['2026-11-16', 20],
   ]);
-  const [week] = compareWeeks(values, ['2026-11-16'], '2026-11-16', 'sum');
+  const result = compareWeeks(values, ['2026-11-09', '2026-11-16'], '2026-11-16', 'sum');
+  const running = result.weeks[1];
 
-  assert.equal(week?.status, 'inProgress');
-  assert.equal(week?.value, 20);
-  assert.equal(week?.previousWeek, null);
-  assert.equal(week?.previousWeekGrowthPercent, null);
-  assert.equal(week?.fourWeekAverage, null);
+  assert.equal(result.average, 100);
+  assert.equal(running?.status, 'inProgress');
+  assert.equal(running?.value, 20);
+  assert.equal(running?.previousWeek, null);
+  assert.equal(running?.previousWeekGrowthPercent, null);
+  assert.equal(running?.averageGrowthPercent, null);
 });
 
-void test('a gap in the four weeks leaves no baseline, the week before still compares', () => {
+void test('a week without a value stays out of the average', () => {
   const values = amounts([
-    ['2026-10-12', 10],
-    ['2026-10-26', 10],
-    ['2026-11-02', 10],
-    ['2026-11-09', 20],
+    ['2026-10-19', 10],
+    ['2026-11-09', 30],
   ]);
-  const [week] = compareWeeks(values, ['2026-11-09'], '2026-11-16', 'sum');
+  const result = compareWeeks(values, RANGE, '2026-11-16', 'sum');
 
-  assert.equal(week?.fourWeekAverage, null);
-  assert.equal(week?.fourWeekGrowthPercent, null);
-  assert.equal(week?.previousWeekGrowthPercent, 100);
+  assert.equal(result.average, 20);
+  assert.equal(result.averageWeeks, 2);
+  assert.equal(result.weeks[1]?.value, null);
+  assert.equal(result.weeks[1]?.averageGrowthPercent, null);
+  assert.equal(result.weeks[3]?.previousWeekGrowthPercent, null);
 });
 
-void test('a rate baseline adds receipts and visitors before dividing', () => {
+void test('without any finished value there is no average', () => {
+  const result = compareWeeks(amounts([['2026-11-16', 5]]), RANGE, '2026-11-16', 'sum');
+
+  assert.equal(result.average, null);
+  assert.equal(result.averageWeeks, 0);
+});
+
+void test('a rate average adds receipts and visitors before dividing', () => {
   const rate = (numerator: number, denominator: number): MonthAmount => ({
     value: (numerator / denominator) * 100,
     parts: { numerator, denominator },
   });
   const values = new Map<string, MonthAmount>([
-    ['2026-10-12', rate(10, 100)],
     ['2026-10-19', rate(10, 100)],
-    ['2026-10-26', rate(10, 100)],
-    ['2026-11-02', rate(90, 100)],
-    ['2026-11-09', rate(30, 100)],
+    ['2026-10-26', rate(90, 300)],
   ]);
-  const [week] = compareWeeks(values, ['2026-11-09'], '2026-11-16', 'ratio');
+  const result = compareWeeks(values, ['2026-10-19', '2026-10-26'], '2026-11-16', 'ratio');
 
-  assert.equal(week?.fourWeekAverage, 30);
-  assert.equal(week?.fourWeekGrowthPercent, 0);
+  assert.equal(result.average, 25);
+  assert.equal(result.weeks[1]?.averageGrowthPercent, 20);
 });
 
 void test('adds stores together and keeps the currencies apart', () => {

@@ -1,3 +1,5 @@
+# Keep this stage identical to the `dependencies` stage in docker/web/Dockerfile:
+# BuildKit then reuses one cached `pnpm install` layer for both images.
 FROM node:24-alpine AS dependencies
 
 RUN npm install --global pnpm@12.3.4

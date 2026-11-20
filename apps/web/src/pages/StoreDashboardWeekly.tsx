@@ -6,6 +6,8 @@ import { getStoreDashboardWeekly } from '../api/store-dashboard';
 import { CalendarIcon, FilterSelect, StoreIcon } from '../components/FilterSelect';
 import {
   Card,
+  ChangeLine,
+  ChangeMark,
   ChevronRightIcon,
   CurrencySwitch,
   FreshnessLine,
@@ -16,11 +18,13 @@ import {
   TrendArrow,
   barHeight,
   barPercent,
+  formatDifference,
   formatGrowth,
   formatValue,
   growthTone,
   kpiNames,
   storeLabel,
+  tooltipGrowthTone,
   valueDigits,
   type Currency,
 } from '../components/StoreDashboardParts';
@@ -33,11 +37,11 @@ import type {
   StoreDashboardWeeklyResponse,
 } from '../types/api';
 
-type ChangeBasis = 'week' | 'fourWeeks';
+type ChangeBasis = 'week' | 'average';
 
-const WEEK_COUNTS = [8, 13, 26];
-const DEFAULT_WEEK_COUNT = 13;
-const CHANGE_BASES: ChangeBasis[] = ['week', 'fourWeeks'];
+const WEEK_COUNTS = [4, 8, 12, 16, 20, 24];
+const DEFAULT_WEEK_COUNT = 12;
+const CHANGE_BASES: ChangeBasis[] = ['week', 'average'];
 
 /** The weeks of one store (or all, `storeNr` null) in the chosen currency. */
 function comparisonFor(
@@ -66,7 +70,7 @@ function weekOf(
 }
 
 function changeOf(week: StoreDashboardWeek, basis: ChangeBasis): number | null {
-  return basis === 'week' ? week.previousWeekGrowthPercent : week.fourWeekGrowthPercent;
+  return basis === 'week' ? week.previousWeekGrowthPercent : week.averageGrowthPercent;
 }
 
 /** A change badge that stays narrow: past 100% the decimal says nothing. */
@@ -101,12 +105,14 @@ function ChangeRow({ label, value }: { label: string; value: number | null }) {
 /** The chosen week with arrows to the weeks around it. */
 function WeekNavigator({
   week,
+  weekCount,
   lastCompleteWeek,
   previous,
   next,
   onSelect,
 }: {
   week: StoreDashboardWeek;
+  weekCount: number;
   lastCompleteWeek: string;
   previous: string | null;
   next: string | null;
@@ -151,7 +157,9 @@ function WeekNavigator({
         </button>
       </div>
       <p className="mt-2 text-center text-xs text-emerald-50/90">
-        {inProgress ? t('storeDashboard.weekInProgressNote') : t('storeDashboard.weekCompareNote')}
+        {inProgress
+          ? t('storeDashboard.weekInProgressNote')
+          : t('storeDashboard.weekCompareNote', { count: weekCount })}
       </p>
     </section>
   );
@@ -161,12 +169,14 @@ function WeekNavigator({
 function WeekKpiCard({
   kpi,
   week,
+  weekCount,
   currency,
   active,
   onSelect,
 }: {
   kpi: StoreDashboardWeekKpi;
   week: StoreDashboardWeek | null;
+  weekCount: number;
   currency: Currency;
   active: boolean;
   onSelect: () => void;
@@ -201,8 +211,8 @@ function WeekKpiCard({
           value={week?.previousWeekGrowthPercent ?? null}
         />
         <ChangeRow
-          label={t('storeDashboard.fourWeeksShort')}
-          value={week?.fourWeekGrowthPercent ?? null}
+          label={t('storeDashboard.averageShort', { count: weekCount })}
+          value={week?.averageGrowthPercent ?? null}
         />
       </span>
     </button>
@@ -213,12 +223,14 @@ function WeekKpiCard({
 function WeekList({
   kpi,
   weeks,
+  weekCount,
   currency,
   selected,
   onSelect,
 }: {
   kpi: StoreDashboardWeekKpi;
   weeks: readonly StoreDashboardWeek[];
+  weekCount: number;
   currency: Currency;
   selected: string;
   onSelect: (weekStart: string) => void;
@@ -262,7 +274,7 @@ function WeekList({
             >
               {option === 'week'
                 ? t('storeDashboard.previousWeekShort')
-                : t('storeDashboard.fourWeeksShort')}
+                : t('storeDashboard.averageShort', { count: weekCount })}
             </button>
           ))}
         </div>
@@ -315,9 +327,8 @@ function WeekList({
               {t('storeDashboard.previousWeekShort')}
             </th>
             <th className="px-4 py-2 text-right font-medium">
-              {t('storeDashboard.fourWeeksShort')}
+              {t('storeDashboard.averageShort', { count: weekCount })}
             </th>
-            <th className="px-4 py-2 text-right font-medium">{t('storeDashboard.change')}</th>
           </tr>
         </thead>
         <tbody>
@@ -345,11 +356,8 @@ function WeekList({
               <td className="px-4 py-2 text-right">
                 <ChangeBadge value={week.previousWeekGrowthPercent} />
               </td>
-              <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                {value(week.fourWeekAverage)}
-              </td>
               <td className="px-4 py-2 text-right">
-                <ChangeBadge value={week.fourWeekGrowthPercent} />
+                <ChangeBadge value={week.averageGrowthPercent} />
               </td>
             </tr>
           ))}
@@ -363,12 +371,14 @@ function WeekList({
 function WeekStores({
   data,
   kpi,
+  weekCount,
   currency,
   selected,
   onSelect,
 }: {
   data: StoreDashboardWeeklyResponse;
   kpi: StoreDashboardWeekKpi;
+  weekCount: number;
   currency: Currency;
   selected: string;
   onSelect: (storeNr: number) => void;
@@ -415,8 +425,8 @@ function WeekStores({
                   value={week?.previousWeekGrowthPercent ?? null}
                 />
                 <ChangeRow
-                  label={t('storeDashboard.fourWeeksShort')}
-                  value={week?.fourWeekGrowthPercent ?? null}
+                  label={t('storeDashboard.averageShort', { count: weekCount })}
+                  value={week?.averageGrowthPercent ?? null}
                 />
               </span>
             </button>
@@ -427,33 +437,82 @@ function WeekStores({
   );
 }
 
-/** The weeks as bars; the chosen one stands out, with its four-week average as a line. */
+/**
+ * The weeks as bars, each with its change from the week before above it, like the monthly
+ * chart. The chosen week stands out and is spelled out above the chart; the line is the average
+ * of the chosen range.
+ */
 function WeekChart({
   kpi,
-  weeks,
+  comparison,
+  weekCount,
   currency,
   selected,
   onSelect,
 }: {
   kpi: StoreDashboardWeekKpi;
-  weeks: readonly StoreDashboardWeek[];
+  comparison: StoreDashboardWeekComparison;
+  weekCount: number;
   currency: Currency;
   selected: string;
   onSelect: (weekStart: string) => void;
 }) {
   const { t, locale } = useTranslation();
   const value = (amount: number | null) => formatValue(amount, kpi, currency, locale, t);
+  const difference = (amount: number | null, base: number | null) =>
+    amount === null || base === null
+      ? null
+      : formatDifference(amount - base, kpi, currency, locale, t);
+  const { weeks, average, averageWeeks } = comparison;
   const selectedWeek = weeks.find((week) => week.weekStart === selected) ?? null;
-  const average = selectedWeek?.fourWeekAverage ?? null;
   const max = Math.max(1, average ?? 0, ...weeks.map((week) => week.value ?? 0));
-  const labelEvery = weeks.length <= 8 ? 1 : weeks.length <= 13 ? 3 : 5;
+  const labelEvery = weekCount <= 8 ? 1 : weekCount <= 12 ? 3 : weekCount <= 16 ? 4 : 5;
+  // Past 12 weeks a phone's bars are narrower than an arrow; the chosen week's change stays above.
+  const markClassName = weekCount > 12 ? 'max-sm:hidden' : '';
+  // The percentage needs a bar wide enough for it; the arrow fits from there on.
+  const percentClassName =
+    weekCount <= 8
+      ? 'inline'
+      : weekCount <= 12
+        ? 'hidden sm:inline'
+        : weekCount <= 16
+          ? 'hidden md:inline'
+          : 'hidden xl:inline';
 
   return (
     <Card className="!p-3 sm:!p-4">
       <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
         {t('storeDashboard.weeklyChartTitle')}
       </h3>
-      <p className="mt-0.5 flex min-h-[18px] items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+      {selectedWeek ? (
+        <div
+          aria-live="polite"
+          className="mt-2 flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-300"
+        >
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold">
+              {formatDateRange(selectedWeek.weekStart, selectedWeek.weekEnd, locale)}
+            </span>
+            <span className="tabular-nums">{value(selectedWeek.value)}</span>
+            {selectedWeek.status === 'inProgress' ? <InProgressChip /> : null}
+          </p>
+          {selectedWeek.status === 'complete' ? (
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <ChangeLine
+                label={t('storeDashboard.vsPreviousWeek')}
+                percent={selectedWeek.previousWeekGrowthPercent}
+                difference={difference(selectedWeek.value, selectedWeek.previousWeek)}
+              />
+              <ChangeLine
+                label={t('storeDashboard.vsAverage', { count: weekCount })}
+                percent={selectedWeek.averageGrowthPercent}
+                difference={difference(selectedWeek.value, average)}
+              />
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      <p className="mt-1.5 flex min-h-[18px] items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
         {average === null ? (
           t('storeDashboard.weeklyChartHint')
         ) : (
@@ -462,61 +521,95 @@ function WeekChart({
               aria-hidden="true"
               className="w-4 flex-shrink-0 border-t-2 border-dashed border-slate-500 dark:border-slate-400"
             />
-            {t('storeDashboard.fourWeekLine', { value: value(average) })}
+            {t('storeDashboard.averageLine', { count: weekCount, value: value(average) })}
+            {averageWeeks < weekCount
+              ? ` · ${t('storeDashboard.averageCoverage', { count: averageWeeks })}`
+              : ''}
           </>
         )}
       </p>
-      <div className="relative mt-3 flex h-40 items-end gap-0.5 border-b border-slate-200 dark:border-slate-700 sm:h-52">
-        {average === null ? null : (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-dashed border-slate-500 dark:border-slate-400"
-            style={{ bottom: barHeight(average, max) }}
-          />
-        )}
-        {weeks.map((week, index) => {
-          const isSelected = week.weekStart === selected;
-          const range = formatDateRange(week.weekStart, week.weekEnd, locale);
-          const tooltipPosition =
-            index < 3
-              ? 'left-0'
-              : index >= weeks.length - 3
-                ? 'right-0'
-                : 'left-1/2 -translate-x-1/2';
+      {/* The top padding leaves room for the change above the tallest bar. */}
+      <div className="mt-1 pt-5">
+        <div className="relative flex h-40 items-end gap-0.5 border-b border-slate-200 dark:border-slate-700 sm:h-52">
+          {average === null ? null : (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-dashed border-slate-500 dark:border-slate-400"
+              style={{ bottom: barHeight(average, max) }}
+            />
+          )}
+          {weeks.map((week, index) => {
+            const isSelected = week.weekStart === selected;
+            const range = formatDateRange(week.weekStart, week.weekEnd, locale);
+            const change = week.previousWeekGrowthPercent;
+            const growth = change === null ? null : formatGrowth(change, locale, t);
+            const amount = difference(week.value, week.previousWeek);
+            const tooltipPosition =
+              index < 3
+                ? 'left-0'
+                : index >= weeks.length - 3
+                  ? 'right-0'
+                  : 'left-1/2 -translate-x-1/2';
+            const label = t('storeDashboard.weekAria', { week: range, value: value(week.value) });
 
-          return (
-            <button
-              key={week.weekStart}
-              type="button"
-              aria-pressed={isSelected}
-              aria-label={t('storeDashboard.weekAria', { week: range, value: value(week.value) })}
-              onClick={() => onSelect(week.weekStart)}
-              className={`group relative flex h-full min-w-0 flex-1 items-end justify-center rounded-t transition ${
-                isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-500/5'
-              }`}
-            >
-              <span
-                className={`block w-full max-w-8 rounded-t ${
-                  week.status === 'inProgress'
-                    ? 'border border-dashed border-emerald-500 bg-emerald-500/25'
-                    : isSelected
-                      ? 'bg-emerald-600 dark:bg-emerald-400'
-                      : 'bg-emerald-300 group-hover:bg-emerald-400 dark:bg-emerald-800 dark:group-hover:bg-emerald-700'
+            return (
+              <button
+                key={week.weekStart}
+                type="button"
+                aria-pressed={isSelected}
+                aria-label={
+                  growth === null
+                    ? label
+                    : `${label}, ${t('storeDashboard.vsPreviousWeek')} ${growth}`
+                }
+                onClick={() => onSelect(week.weekStart)}
+                className={`group relative flex h-full min-w-0 flex-1 items-end justify-center rounded-t transition ${
+                  isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-500/5'
                 }`}
-                style={{ height: barHeight(week.value, max) }}
-              />
-              <span
-                role="tooltip"
-                className={`pointer-events-none absolute bottom-full z-20 mb-1 hidden w-max rounded-lg bg-slate-900 px-2.5 py-1.5 text-left text-[11px] leading-snug text-slate-300 shadow-lg ring-1 ring-white/10 group-hover:block group-focus-visible:block dark:bg-slate-800 ${tooltipPosition}`}
               >
-                <span className="block">{range}</span>
-                <span className="block font-semibold tabular-nums text-slate-100">
-                  {value(week.value)}
+                {change === null ? null : (
+                  <ChangeMark
+                    percent={change}
+                    bottom={barPercent(week.value, max)}
+                    percentClassName={percentClassName}
+                    className={`z-20 rounded bg-white/85 dark:bg-slate-900/85 ${markClassName}`}
+                  />
+                )}
+                <span
+                  className={`block w-full max-w-8 rounded-t ${
+                    week.status === 'inProgress'
+                      ? 'border border-dashed border-emerald-500 bg-emerald-500/25'
+                      : isSelected
+                        ? 'bg-emerald-600 dark:bg-emerald-400'
+                        : 'bg-emerald-300 group-hover:bg-emerald-400 dark:bg-emerald-800 dark:group-hover:bg-emerald-700'
+                  }`}
+                  style={{ height: barHeight(week.value, max) }}
+                />
+                <span
+                  role="tooltip"
+                  className={`pointer-events-none absolute bottom-full z-30 mb-1 hidden w-max rounded-lg bg-slate-900 px-2.5 py-1.5 text-left text-[11px] leading-snug text-slate-300 shadow-lg ring-1 ring-white/10 group-hover:block group-focus-visible:block dark:bg-slate-800 ${tooltipPosition}`}
+                >
+                  <span className="block">{range}</span>
+                  <span className="block font-semibold tabular-nums text-slate-100">
+                    {value(week.value)}
+                  </span>
+                  {change === null || growth === null ? null : (
+                    <>
+                      <span
+                        className={`mt-1 block font-semibold tabular-nums ${tooltipGrowthTone(change)}`}
+                      >
+                        {amount === null ? growth : `${amount} · ${growth}`}
+                      </span>
+                      <span className="block tabular-nums">
+                        {`${t('storeDashboard.previousWeekShort')}: ${value(week.previousWeek)}`}
+                      </span>
+                    </>
+                  )}
                 </span>
-              </span>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="mt-1 flex h-4 gap-0.5 text-[10px] text-slate-500 dark:text-slate-400">
         {weeks.map((week, index) => {
@@ -541,7 +634,7 @@ function WeekChart({
 
 /**
  * The store KPIs week by week (ADR-071): the chosen week of every KPI against the week before
- * and the average of the four before that, then the chosen KPI's weeks, its stores and a chart.
+ * and the average of the chosen range, then the chosen KPI's weeks, its stores and a chart.
  * Weeks are analysis only. The URL holds the choices (`?view=weekly&weeks=&week=&store=&currency=&tab=`).
  */
 export function StoreDashboardWeekly() {
@@ -564,7 +657,8 @@ export function StoreDashboardWeekly() {
       ? requestedStore
       : null;
   const kpi = data?.kpis.find((entry) => entry.code === searchParams.get('tab')) ?? data?.kpis[0];
-  const weeks = (kpi ? comparisonFor(kpi, currency, storeNr)?.weeks : undefined) ?? [];
+  const comparison = kpi ? comparisonFor(kpi, currency, storeNr) : null;
+  const weeks = comparison?.weeks ?? [];
   const selectedIndex = (() => {
     const requested = weeks.findIndex((week) => week.weekStart === searchParams.get('week'));
 
@@ -656,7 +750,7 @@ export function StoreDashboardWeekly() {
         </p>
       ) : null}
 
-      {data && hasStores && kpi && selectedWeek ? (
+      {data && hasStores && kpi && comparison && selectedWeek ? (
         <div
           aria-busy={query.isPlaceholderData}
           className={`flex flex-col gap-4 transition-opacity ${
@@ -665,6 +759,7 @@ export function StoreDashboardWeekly() {
         >
           <WeekNavigator
             week={selectedWeek}
+            weekCount={weekCount}
             lastCompleteWeek={data.lastCompleteWeek}
             previous={weeks[weeks.indexOf(selectedWeek) - 1]?.weekStart ?? null}
             next={weeks[weeks.indexOf(selectedWeek) + 1]?.weekStart ?? null}
@@ -677,6 +772,7 @@ export function StoreDashboardWeekly() {
                 key={entry.code}
                 kpi={entry}
                 week={weekOf(comparisonFor(entry, currency, storeNr), selectedWeek.weekStart)}
+                weekCount={weekCount}
                 currency={currency}
                 active={entry.code === kpi.code}
                 onSelect={() => update({ tab: entry.code })}
@@ -694,21 +790,24 @@ export function StoreDashboardWeekly() {
             ) : null}
           </div>
 
-          <div className="grid items-start gap-4 lg:grid-cols-5">
-            <div className={storeNr === null ? 'lg:col-span-3' : 'lg:col-span-5'}>
+          {/* Side by side only from `xl:`: at `lg:` the sidebar leaves the table too little room. */}
+          <div className="grid items-start gap-4 xl:grid-cols-5">
+            <div className={storeNr === null ? 'xl:col-span-3' : 'xl:col-span-5'}>
               <WeekList
                 kpi={kpi}
                 weeks={weeks}
+                weekCount={weekCount}
                 currency={currency}
                 selected={selectedWeek.weekStart}
                 onSelect={selectWeek}
               />
             </div>
             {storeNr === null ? (
-              <div className="lg:col-span-2">
+              <div className="xl:col-span-2">
                 <WeekStores
                   data={data}
                   kpi={kpi}
+                  weekCount={weekCount}
                   currency={currency}
                   selected={selectedWeek.weekStart}
                   onSelect={(nr) => update({ store: String(nr) })}
@@ -719,7 +818,8 @@ export function StoreDashboardWeekly() {
 
           <WeekChart
             kpi={kpi}
-            weeks={weeks}
+            comparison={comparison}
+            weekCount={weekCount}
             currency={currency}
             selected={selectedWeek.weekStart}
             onSelect={selectWeek}

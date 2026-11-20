@@ -868,16 +868,17 @@ interface TranslationShape {
     previousWeekAction: string;
     nextWeekAction: string;
     vsPreviousWeek: string;
-    vsFourWeeks: string;
+    vsAverage: string;
     previousWeekShort: string;
-    fourWeeksShort: string;
+    averageShort: string;
     week: string;
     value: string;
     weekBasis: string;
     weeklyListTitle: string;
     weeklyChartTitle: string;
     weeklyChartHint: string;
-    fourWeekLine: string;
+    averageLine: string;
+    averageCoverage: string;
     weekAria: string;
     weekStoresHint: string;
     weeklyEmpty: string;
@@ -1851,21 +1852,22 @@ export const translations: Record<Locale, TranslationShape> = {
       lastCompleteWeek: 'Son bitmiş hafta',
       runningWeek: 'Bu hafta',
       selectedWeek: 'Seçili hafta',
-      weekCompareNote: 'Önceki haftayla ve ondan önceki 4 haftanın ortalamasıyla karşılaştırılır.',
+      weekCompareNote: 'Önceki haftayla ve seçilen {count} haftanın ortalamasıyla karşılaştırılır.',
       weekInProgressNote: 'Hafta devam ediyor; karşılaştırmaya girmez.',
       previousWeekAction: 'Önceki haftaya git',
       nextWeekAction: 'Sonraki haftaya git',
       vsPreviousWeek: 'Önceki haftaya göre',
-      vsFourWeeks: '4 hafta ortalamasına göre',
+      vsAverage: '{count} hafta ortalamasına göre',
       previousWeekShort: 'Önceki hafta',
-      fourWeeksShort: '4 hafta ort.',
+      averageShort: '{count} hafta ort.',
       week: 'Hafta',
       value: 'Değer',
       weekBasis: 'Değişim sütunu',
       weeklyListTitle: 'Hafta hafta',
       weeklyChartTitle: 'Son haftalar',
       weeklyChartHint: 'Bir haftayı seçmek için dokunun.',
-      fourWeekLine: 'Önceki 4 hafta ortalaması: {value}',
+      averageLine: '{count} hafta ortalaması: {value}',
+      averageCoverage: '{count} haftada veri var',
       weekAria: '{week}: {value}',
       weekStoresHint: 'Seçili haftanın değerine göre sıralı.',
       weeklyEmpty: 'Henüz saklanmış haftalık değer yok. Değerler ilk güncellemede gelir.',
@@ -2839,21 +2841,23 @@ export const translations: Record<Locale, TranslationShape> = {
       lastCompleteWeek: 'Last finished week',
       runningWeek: 'This week',
       selectedWeek: 'Selected week',
-      weekCompareNote: 'Compared with the week before and the average of the 4 weeks before it.',
+      weekCompareNote:
+        'Compared with the week before and the average of the selected {count} weeks.',
       weekInProgressNote: 'The week is still in progress and is not compared.',
       previousWeekAction: 'Go to the previous week',
       nextWeekAction: 'Go to the next week',
       vsPreviousWeek: 'vs previous week',
-      vsFourWeeks: 'vs 4-week average',
+      vsAverage: 'vs {count}-week average',
       previousWeekShort: 'Prev. week',
-      fourWeeksShort: '4-week avg',
+      averageShort: '{count}-week avg',
       week: 'Week',
       value: 'Value',
       weekBasis: 'Change column',
       weeklyListTitle: 'Week by week',
       weeklyChartTitle: 'Recent weeks',
       weeklyChartHint: 'Tap a week to select it.',
-      fourWeekLine: 'Average of the previous 4 weeks: {value}',
+      averageLine: '{count}-week average: {value}',
+      averageCoverage: 'data in {count} weeks',
       weekAria: '{week}: {value}',
       weekStoresHint: 'Ranked by the selected week’s value.',
       weeklyEmpty: 'No weekly values are stored yet. They arrive with the first refresh.',
@@ -3829,21 +3833,22 @@ export const translations: Record<Locale, TranslationShape> = {
       lastCompleteWeek: 'Последняя завершённая неделя',
       runningWeek: 'Эта неделя',
       selectedWeek: 'Выбранная неделя',
-      weekCompareNote: 'Сравнение с предыдущей неделей и средним за 4 недели до неё.',
+      weekCompareNote: 'Сравнение с предыдущей неделей и средним за выбранные {count} нед.',
       weekInProgressNote: 'Неделя ещё идёт и в сравнение не входит.',
       previousWeekAction: 'К предыдущей неделе',
       nextWeekAction: 'К следующей неделе',
       vsPreviousWeek: 'К прошлой неделе',
-      vsFourWeeks: 'К среднему за 4 недели',
+      vsAverage: 'К среднему за {count} нед.',
       previousWeekShort: 'Пред. нед.',
-      fourWeeksShort: 'Сред. 4 нед.',
+      averageShort: 'Сред. {count} нед.',
       week: 'Неделя',
       value: 'Значение',
       weekBasis: 'Столбец изменения',
       weeklyListTitle: 'По неделям',
       weeklyChartTitle: 'Последние недели',
       weeklyChartHint: 'Нажмите на неделю, чтобы выбрать её.',
-      fourWeekLine: 'Среднее за 4 предыдущие недели: {value}',
+      averageLine: 'Среднее за {count} нед.: {value}',
+      averageCoverage: 'данные за {count} нед.',
       weekAria: '{week}: {value}',
       weekStoresHint: 'По значению выбранной недели.',
       weeklyEmpty: 'Недельных значений пока нет. Они появятся при первом обновлении.',
@@ -4822,21 +4827,22 @@ export const translations: Record<Locale, TranslationShape> = {
       lastCompleteWeek: 'Soňky tamamlanan hepde',
       runningWeek: 'Şu hepde',
       selectedWeek: 'Saýlanan hepde',
-      weekCompareNote: 'Öňki hepde we ondan öňki 4 hepdäniň ortaçasy bilen deňeşdirilýär.',
+      weekCompareNote: 'Öňki hepde we saýlanan {count} hepdäniň ortaçasy bilen deňeşdirilýär.',
       weekInProgressNote: 'Hepde dowam edýär; deňeşdirmä girmeýär.',
       previousWeekAction: 'Öňki hepdä geç',
       nextWeekAction: 'Indiki hepdä geç',
       vsPreviousWeek: 'Öňki hepdä görä',
-      vsFourWeeks: '4 hepdäniň ortaçasyna görä',
+      vsAverage: '{count} hepdäniň ortaçasyna görä',
       previousWeekShort: 'Öňki hepde',
-      fourWeeksShort: '4 hepde ort.',
+      averageShort: '{count} hepde ort.',
       week: 'Hepde',
       value: 'Baha',
       weekBasis: 'Üýtgeşme sütüni',
       weeklyListTitle: 'Hepdeme-hepde',
       weeklyChartTitle: 'Soňky hepdeler',
       weeklyChartHint: 'Hepdäni saýlamak üçin basyň.',
-      fourWeekLine: 'Öňki 4 hepdäniň ortaçasy: {value}',
+      averageLine: '{count} hepdäniň ortaçasy: {value}',
+      averageCoverage: '{count} hepdede maglumat bar',
       weekAria: '{week}: {value}',
       weekStoresHint: 'Saýlanan hepdäniň bahasyna görä tertiplenen.',
       weeklyEmpty: 'Entek saklanan hepdelik baha ýok. Bahalar ilkinji täzelenmede geler.',

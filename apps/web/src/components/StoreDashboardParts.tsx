@@ -284,3 +284,69 @@ export function CurrencySwitch({
     </div>
   );
 }
+
+/** A change's colour on the dark background of a chart tooltip. */
+export function tooltipGrowthTone(percent: number): string {
+  return percent > 0 ? 'text-emerald-300' : percent < 0 ? 'text-red-300' : 'text-slate-100';
+}
+
+/**
+ * A period's change above its bar: an arrow, with the whole percentage as far as the bars leave
+ * room for it (`percentClassName`). `children` is the tooltip of the mark, if it has one.
+ */
+export function ChangeMark({
+  percent,
+  bottom,
+  percentClassName = 'hidden sm:inline',
+  className = '',
+  children,
+}: {
+  percent: number;
+  /** Height of the bar below it, in percent of the chart. */
+  bottom: number;
+  percentClassName?: string;
+  className?: string;
+  children?: ReactNode;
+}) {
+  const { t, locale } = useTranslation();
+
+  return (
+    <span
+      className="absolute inset-x-0 flex justify-center"
+      style={{ bottom: `calc(${String(bottom)}% + 1px)` }}
+    >
+      <span
+        className={`group/change relative inline-flex items-center gap-0.5 whitespace-nowrap p-1 text-[11px] font-semibold leading-none tabular-nums ${growthTone(percent)} ${className}`}
+      >
+        {percent === 0 ? null : <TrendArrow up={percent > 0} className="h-3 w-3" />}
+        <span className={percentClassName}>
+          {t('storeDashboard.percent', {
+            value: formatNumber(Math.abs(percent), locale, { maximumFractionDigits: 0 }),
+          })}
+        </span>
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/** One change of the selected period: what it is against, the percentage and how much. */
+export function ChangeLine({
+  label,
+  percent,
+  difference,
+}: {
+  label: string;
+  percent: number | null;
+  difference: string | null;
+}) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span className="text-slate-500 dark:text-slate-400">{`${label}:`}</span>
+      <GrowthBadge value={percent} />
+      {percent !== null && difference !== null ? (
+        <span className={`font-medium tabular-nums ${growthTone(percent)}`}>{difference}</span>
+      ) : null}
+    </span>
+  );
+}

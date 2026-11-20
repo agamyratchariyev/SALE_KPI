@@ -6,10 +6,13 @@ import type {
   KpiTemplate,
   KpiTemplateBulkCopyResponse,
   KpiTemplateListResponse,
+  KpiTemplateSummary,
   SaveKpiTemplateInput,
 } from '../types/api';
 
 const KPI_TEMPLATES_PAGE_SIZE = 20;
+/** The most `GET /kpi-templates` returns in one page. */
+const KPI_TEMPLATES_MAX_PAGE_SIZE = 100;
 
 export interface KpiTemplateListQuery {
   search?: string;
@@ -19,10 +22,11 @@ export interface KpiTemplateListQuery {
 export function listKpiTemplates(
   page: number,
   query: KpiTemplateListQuery = {},
+  limit = KPI_TEMPLATES_PAGE_SIZE,
 ): Promise<KpiTemplateListResponse> {
   const params = new URLSearchParams({
     page: String(page),
-    limit: String(KPI_TEMPLATES_PAGE_SIZE),
+    limit: String(limit),
   });
 
   for (const [key, value] of Object.entries(query)) {
@@ -32,6 +36,25 @@ export function listKpiTemplates(
   }
 
   return apiFetch<KpiTemplateListResponse>(`/kpi-templates?${params.toString()}`);
+}
+
+/** Every active template, for a picker that has no search of its own. */
+export async function listActiveKpiTemplates(): Promise<KpiTemplateSummary[]> {
+  const templates: KpiTemplateSummary[] = [];
+
+  for (let page = 1; ; page += 1) {
+    const { items, total } = await listKpiTemplates(
+      page,
+      { isActive: true },
+      KPI_TEMPLATES_MAX_PAGE_SIZE,
+    );
+
+    templates.push(...items);
+
+    if (items.length === 0 || templates.length >= total) {
+      return templates;
+    }
+  }
 }
 
 export function getKpiTemplate(id: string): Promise<KpiTemplate> {

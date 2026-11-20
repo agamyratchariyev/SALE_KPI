@@ -791,14 +791,16 @@ export interface StoreDashboardWeek {
   value: number | null;
   previousWeek: number | null;
   previousWeekGrowthPercent: number | null;
-  /** The four weeks before, averaged; only when all four have a value. */
-  fourWeekAverage: number | null;
-  fourWeekGrowthPercent: number | null;
+  /** Change from the range's average; only for a finished week. */
+  averageGrowthPercent: number | null;
 }
 
 export interface StoreDashboardWeekComparison {
   /** Tiger iş yeri number; null for all stores together. */
   storeNr: number | null;
+  /** The average of the chosen finished weeks that have a value. */
+  average: number | null;
+  averageWeeks: number;
   /** Oldest first; the last one is the running week. */
   weeks: StoreDashboardWeek[];
 }

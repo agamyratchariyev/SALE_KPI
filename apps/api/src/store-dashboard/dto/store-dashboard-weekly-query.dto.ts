@@ -1,25 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 
-import {
-  DEFAULT_DASHBOARD_WEEKS,
-  MAX_DASHBOARD_WEEKS,
-  MIN_DASHBOARD_WEEKS,
-} from '../store-dashboard-week-rules.js';
+import { DASHBOARD_WEEK_COUNTS, DEFAULT_DASHBOARD_WEEKS } from '../store-dashboard-week-rules.js';
 
 export class StoreDashboardWeeklyQueryDto {
   @ApiPropertyOptional({
     type: Number,
+    enum: DASHBOARD_WEEK_COUNTS,
     example: DEFAULT_DASHBOARD_WEEKS,
-    minimum: MIN_DASHBOARD_WEEKS,
-    maximum: MAX_DASHBOARD_WEEKS,
-    description: 'Gösterilecek hafta sayısı; içinde bulunulan hafta dâhildir.',
+    description:
+      'Gösterilecek ve ortalaması alınacak bitmiş hafta sayısı; içinde bulunulan hafta ayrıca eklenir.',
   })
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(MIN_DASHBOARD_WEEKS)
-  @Max(MAX_DASHBOARD_WEEKS)
+  @IsIn(DASHBOARD_WEEK_COUNTS)
   weeks?: number;
 }

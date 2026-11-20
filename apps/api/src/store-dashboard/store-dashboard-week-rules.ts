@@ -13,15 +13,12 @@ import {
  * is the month (docs/BUSINESS_RULES.md).
  */
 
-export const MIN_DASHBOARD_WEEKS = 4;
-export const DEFAULT_DASHBOARD_WEEKS = 13;
-export const MAX_DASHBOARD_WEEKS = 53;
+/** The ranges the weekly view offers: how many finished weeks it shows and averages. */
+export const DASHBOARD_WEEK_COUNTS = [4, 8, 12, 16, 20, 24] as const;
+export const DEFAULT_DASHBOARD_WEEKS = 12;
 
-/** The weeks a finished week is measured against, besides the one right before it. */
-export const BASELINE_WEEKS = 4;
-
-/** Every week the dashboard can show or compare with, plus the running one's margin. */
-export const WEEK_REFRESH_WEEKS = MAX_DASHBOARD_WEEKS + BASELINE_WEEKS + 3;
+/** Weeks every refresh rewrites: all ranges with room to spare; older rows stay as they are. */
+export const WEEK_REFRESH_WEEKS = 60;
 
 export const WEEK_STATUSES = ['complete', 'inProgress'] as const;
 
@@ -43,10 +40,16 @@ export interface WeekComparison {
   previousWeek: number | null;
   /** Change from the week before; needs a positive value there. */
   previousWeekGrowthPercent: number | null;
-  /** The four weeks before, averaged; only when all four have a value. */
-  fourWeekAverage: number | null;
-  /** Change from that average; needs a positive average. */
-  fourWeekGrowthPercent: number | null;
+  /** Change from the range's average; only for a finished week, needs a positive average. */
+  averageGrowthPercent: number | null;
+}
+
+export interface WeekSeriesComparison {
+  /** The average of the range's finished weeks that have a value. */
+  average: number | null;
+  /** How many weeks that average covers. */
+  averageWeeks: number;
+  weeks: WeekComparison[];
 }
 
 /** `date` (`YYYY-MM-DD`) moved by `days`, on the calendar: no time zone is involved. */
@@ -87,16 +90,16 @@ export function weekRefreshWindow(today: string): {
   };
 }
 
-/** `count` Mondays ending with the running week, oldest first. */
+/** `count` finished weeks and the running one after them, as Mondays, oldest first. */
 export function shownWeeks(currentWeek: string, count: number): string[] {
-  return Array.from({ length: count }, (_, index) =>
-    addDays(currentWeek, -7 * (count - 1 - index)),
+  return Array.from({ length: count + 1 }, (_, index) =>
+    addDays(currentWeek, -7 * (count - index)),
   );
 }
 
-/** The earliest week the shown ones are compared with. */
-export function firstBaselineWeek(weeks: readonly string[]): string {
-  return addDays(weeks[0] ?? '', -7 * BASELINE_WEEKS);
+/** The earliest week needed: the one the oldest shown week is compared with. */
+export function firstComparedWeek(weeks: readonly string[]): string {
+  return addDays(weeks[0] ?? '', -7);
 }
 
 /** Weekly amounts (Monday → amount); stores add up as in `valuesByPeriod`. */
@@ -111,53 +114,59 @@ export function weeklyValues(
 }
 
 /**
- * The average of the four weeks before `weekStart`. A week without a value (a closed store, no
- * entered counts) makes the baseline unreliable, so it gives none. A rate adds its parts first.
+ * The average of the given amounts. A week without a value (a closed store, no entered counts)
+ * is left out rather than counted as zero, like the months of the target reports. A rate adds
+ * its parts first.
  */
-function fourWeekAverage(
-  values: ReadonlyMap<string, MonthAmount>,
-  weekStart: string,
+function averageOf(
+  amounts: readonly MonthAmount[],
   aggregation: StoreDashboardAggregation,
 ): number | null {
-  const amounts = Array.from({ length: BASELINE_WEEKS }, (_, index) =>
-    values.get(addDays(weekStart, -7 * (index + 1))),
-  ).filter((amount) => amount !== undefined);
-
-  if (amounts.length < BASELINE_WEEKS) {
+  if (amounts.length === 0) {
     return null;
   }
 
   return aggregation === 'ratio'
     ? ratioOf(amounts)
-    : amounts.reduce((sum, amount) => sum + amount.value, 0) / BASELINE_WEEKS;
+    : amounts.reduce((sum, amount) => sum + amount.value, 0) / amounts.length;
 }
 
 /**
- * Each shown week with its comparisons. The running week is shown but never compared: it is
- * only partly over. `values` may hold earlier weeks, which the comparisons read.
+ * The shown weeks with their comparisons and the average of the finished ones. The running week
+ * is shown but neither compared nor averaged: it is only partly over. `values` may hold the
+ * week before the first one, which that week is compared with.
  */
 export function compareWeeks(
   values: ReadonlyMap<string, MonthAmount>,
   weeks: readonly string[],
   currentWeek: string,
   aggregation: StoreDashboardAggregation,
-): WeekComparison[] {
-  return weeks.map((weekStart) => {
-    const status: WeekStatus = weekStart === currentWeek ? 'inProgress' : 'complete';
-    const value = values.get(weekStart)?.value ?? null;
-    const complete = status === 'complete';
-    const previousWeek = complete ? (values.get(addDays(weekStart, -7))?.value ?? null) : null;
-    const average = complete ? fourWeekAverage(values, weekStart, aggregation) : null;
+): WeekSeriesComparison {
+  const amounts = weeks.flatMap((weekStart) => {
+    const amount = weekStart === currentWeek ? undefined : values.get(weekStart);
 
-    return {
-      weekStart,
-      weekEnd: addDays(weekStart, 6),
-      status,
-      value,
-      previousWeek,
-      previousWeekGrowthPercent: growthPercent(value, previousWeek),
-      fourWeekAverage: average,
-      fourWeekGrowthPercent: growthPercent(value, average),
-    };
+    return amount ? [amount] : [];
   });
+  const average = averageOf(amounts, aggregation);
+
+  return {
+    average,
+    averageWeeks: amounts.length,
+    weeks: weeks.map((weekStart) => {
+      const status: WeekStatus = weekStart === currentWeek ? 'inProgress' : 'complete';
+      const value = values.get(weekStart)?.value ?? null;
+      const complete = status === 'complete';
+      const previousWeek = complete ? (values.get(addDays(weekStart, -7))?.value ?? null) : null;
+
+      return {
+        weekStart,
+        weekEnd: addDays(weekStart, 6),
+        status,
+        value,
+        previousWeek,
+        previousWeekGrowthPercent: growthPercent(value, previousWeek),
+        averageGrowthPercent: complete ? growthPercent(value, average) : null,
+      };
+    }),
+  };
 }

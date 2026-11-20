@@ -281,19 +281,11 @@ export class StoreDashboardWeekResponse {
   @ApiProperty({
     type: Number,
     nullable: true,
-    example: 50900,
-    description:
-      'Önceki dört haftanın ortalaması; dördünün de değeri olmalıdır. Oranlarda paylar ve paydalar önce toplanır.',
-  })
-  fourWeekAverage: number | null;
-
-  @ApiProperty({
-    type: Number,
-    nullable: true,
     example: 10.9,
-    description: 'Dört hafta ortalamasına göre yüzde değişim, bir ondalık.',
+    description:
+      'Seçilen haftaların ortalamasına göre yüzde değişim, bir ondalık. Yalnız bitmiş haftada dolu.',
   })
-  fourWeekGrowthPercent: number | null;
+  averageGrowthPercent: number | null;
 }
 
 export class StoreDashboardWeekComparisonResponse {
@@ -304,6 +296,18 @@ export class StoreDashboardWeekComparisonResponse {
     description: 'İş yeri numarası (`INVOICE.BRANCH`); `null` bütün mağazaların toplamıdır.',
   })
   storeNr: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 50900,
+    description:
+      'Seçilen bitmiş haftalardan değeri olanların ortalaması; oranlarda paylar ve paydalar önce toplanır.',
+  })
+  average: number | null;
+
+  @ApiProperty({ type: Number, example: 12, description: 'Ortalamaya giren hafta sayısı.' })
+  averageWeeks: number;
 
   @ApiProperty({
     type: () => StoreDashboardWeekResponse,

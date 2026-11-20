@@ -32,7 +32,7 @@ import {
   DEFAULT_DASHBOARD_WEEKS,
   addDays,
   compareWeeks,
-  firstBaselineWeek,
+  firstComparedWeek,
   shownWeeks,
   weekStartOf,
   weeklyValues,
@@ -102,7 +102,7 @@ export class StoreDashboardService {
     };
   }
 
-  /** The recent weeks of every store KPI, each against the week and the four weeks before. */
+  /** The recent weeks of every store KPI, each against the week before and their average. */
   async getWeekly(query: StoreDashboardWeeklyQueryDto): Promise<StoreDashboardWeeklyResponse> {
     const currentWeek = weekStartOf(dateInZone(new Date(), getBusinessTimeZone()));
     const weeks = shownWeeks(currentWeek, query.weeks ?? DEFAULT_DASHBOARD_WEEKS);
@@ -112,7 +112,7 @@ export class StoreDashboardService {
         where: {
           firmNr,
           kpiCode: In([...STORE_DASHBOARD_KPI_CODES]),
-          weekStart: Between(firstBaselineWeek(weeks), currentWeek),
+          weekStart: Between(firstComparedWeek(weeks), currentWeek),
         },
       }),
       this.definitionRepository.find({ where: { code: In([...STORE_DASHBOARD_KPI_CODES]) } }),
@@ -153,7 +153,7 @@ export class StoreDashboardService {
       storeNr: number | null,
     ): StoreDashboardWeekComparisonResponse => ({
       storeNr,
-      weeks: compareWeeks(
+      ...compareWeeks(
         weeklyValues(rows, code, currency, storeNr, aggregation),
         weeks,
         currentWeek,
