@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { listEmployees } from '../api/employees';
@@ -14,7 +14,7 @@ import {
   listKpiPlans,
   reopenKpiPeriod,
 } from '../api/kpi-plans';
-import { getKpiTemplate, listKpiTemplates } from '../api/kpi-templates';
+import { getKpiTemplate, listActiveKpiTemplates } from '../api/kpi-templates';
 import { AppShell } from '../components/AppShell';
 import { CopyKpiPlansModal } from '../components/CopyKpiPlansModal';
 import { PasswordConfirmModal } from '../components/PasswordConfirmModal';
@@ -49,6 +49,7 @@ import type {
   KpiPlanSummary,
 } from '../types/api';
 import { confirmAction } from '../store/confirm-store';
+import { useKpiPlanListStore } from '../store/kpi-plan-list-store';
 
 /** Any GUID text; SQL Server's NEWSEQUENTIALID values are not RFC 4122 UUIDs. */
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -698,8 +699,13 @@ export function KpiPlansPage() {
   const [newPeriodOpen, setNewPeriodOpen] = useState(false);
   // Copying from another month asks how much the targets change first (ADR-070).
   const [copyOpen, setCopyOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  // Search, month and template filter outlive the page (kpi-plan-list-store).
+  const searchInput = useKpiPlanListStore((state) => state.searchInput);
+  const setSearchInput = useKpiPlanListStore((state) => state.setSearchInput);
+  const keptPeriodLabel = useKpiPlanListStore((state) => state.periodLabel);
+  const keptTemplateId = useKpiPlanListStore((state) => state.templateId);
+  // Starts from the kept text, so coming back does not wait for the debounce.
+  const [search, setSearch] = useState(() => searchInput.trim());
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -709,8 +715,11 @@ export function KpiPlansPage() {
   const periodsQuery = useQuery({ queryKey: ['kpi-periods'], queryFn: listKpiPeriods });
   const periods = useMemo(() => periodsQuery.data?.items ?? [], [periodsQuery.data]);
   // The chosen month lives in the address (?period=2026-09), so a reload or a way back from a
-  // plan lands on the same month; without it the newest month is shown.
-  const period = periods.find((item) => item.label === searchParams.get('period')) ?? periods[0];
+  // plan lands on the same month. Without it the kept month is used, then the newest one; a
+  // month that no longer exists falls back to the newest too.
+  const addressPeriod = searchParams.get('period');
+  const periodLabel = addressPeriod ?? keptPeriodLabel;
+  const period = periods.find((item) => item.label === periodLabel) ?? periods[0];
   // The copy dialog starts on the latest earlier month that has plans; any other month can be
   // picked there (ADR-070). Without an earlier month it starts on the newest other one.
   const earlierPeriods = period
@@ -723,7 +732,32 @@ export function KpiPlansPage() {
 
   // The KPI templates screen links here with ?template=<id>: the plans built from that template.
   const templateParam = searchParams.get('template') ?? '';
-  const templateId = GUID_PATTERN.test(templateParam) ? templateParam : '';
+  const addressTemplateId = GUID_PATTERN.test(templateParam) ? templateParam : null;
+  const templateId = addressTemplateId ?? keptTemplateId ?? '';
+
+  // What the address says is kept (a link, a reload); what it lacks comes back from memory
+  // (the menu link is a bare /kpi-plans), so a reload after that still lands on the same list.
+  useEffect(() => {
+    const kept = useKpiPlanListStore.getState();
+
+    if (addressPeriod !== null) kept.setPeriodLabel(addressPeriod);
+    if (addressTemplateId !== null) kept.setTemplateId(addressTemplateId);
+
+    const restoredPeriod = addressPeriod === null ? kept.periodLabel : null;
+    const restoredTemplate = addressTemplateId === null ? kept.templateId : null;
+
+    if (restoredPeriod === null && restoredTemplate === null) return;
+
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (restoredPeriod !== null) next.set('period', restoredPeriod);
+        if (restoredTemplate !== null) next.set('template', restoredTemplate);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [addressPeriod, addressTemplateId, setSearchParams]);
 
   function selectPeriod(label: string) {
     setSearchParams(
@@ -736,7 +770,8 @@ export function KpiPlansPage() {
     );
   }
 
-  function clearTemplateFilter() {
+  const clearTemplateFilter = useCallback(() => {
+    useKpiPlanListStore.getState().setTemplateId(null);
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
@@ -745,7 +780,7 @@ export function KpiPlansPage() {
       },
       { replace: true },
     );
-  }
+  }, [setSearchParams]);
 
   const listQuery = useMemo(
     () => ({
@@ -789,6 +824,14 @@ export function KpiPlansPage() {
     enabled: templateId !== '',
   });
   const filterTemplateName = filterTemplateQuery.data?.name ?? plans[0]?.templateName ?? '…';
+  // A kept template may have been deleted since: the list goes back to every template instead
+  // of staying empty under a nameless filter.
+  const filterTemplateGone =
+    filterTemplateQuery.error instanceof ApiError && filterTemplateQuery.error.status === 404;
+
+  useEffect(() => {
+    if (filterTemplateGone) clearTemplateFilter();
+  }, [filterTemplateGone, clearTemplateFilter]);
 
   async function refresh() {
     await Promise.all([
@@ -1429,8 +1472,10 @@ function AssignDrawer({
   }, [employeeSearch]);
 
   const templatesQuery = useQuery({
-    queryKey: ['kpi-templates', 'list', { isActive: true }],
-    queryFn: () => listKpiTemplates(1, { isActive: true }),
+    // Not under ['kpi-templates', 'list', …]: the list screen keeps paged data there, and the
+    // two shapes under one key crash whichever screen reads the other's.
+    queryKey: ['kpi-templates', 'assignable'],
+    queryFn: listActiveKpiTemplates,
     enabled: open,
   });
   const employeesQuery = useQuery({
@@ -1475,7 +1520,7 @@ function AssignDrawer({
             className={formInputClassName}
           >
             <option value="">{t('kpiPlans.selectTemplate')}</option>
-            {(templatesQuery.data?.items ?? []).map((template) => (
+            {(templatesQuery.data ?? []).map((template) => (
               <option key={template.id} value={template.id}>
                 {template.name}
               </option>

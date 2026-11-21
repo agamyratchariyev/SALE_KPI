@@ -8,6 +8,7 @@ import {
   type MonthStatus,
   type StoreDashboardAggregation,
 } from './store-dashboard-rules.js';
+import { WEEK_STATUSES, type WeekStatus } from './store-dashboard-week-rules.js';
 
 export class StoreDashboardMonthResponse {
   @ApiProperty({ type: Number, example: 3, description: '1–12.' })
@@ -236,4 +237,155 @@ export class StoreDashboardResponse {
     description: 'Katalog sırasıyla #1–#7 ve #16 (ADR-065).',
   })
   kpis: StoreDashboardKpiResponse[];
+}
+
+export class StoreDashboardWeekResponse {
+  @ApiProperty({ type: String, example: '2026-11-09', description: 'Haftanın pazartesisi.' })
+  weekStart: string;
+
+  @ApiProperty({ type: String, example: '2026-11-15', description: 'Haftanın pazarı.' })
+  weekEnd: string;
+
+  @ApiProperty({
+    type: String,
+    enum: WEEK_STATUSES,
+    description: '`complete` bitmiş hafta, `inProgress` içinde bulunulan hafta (karşılaştırılmaz).',
+  })
+  status: WeekStatus;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 56460,
+    description:
+      "Haftanın değeri; o hafta satış/iade belgesi (ziyaretçi KPI'larında sayı) yoksa `null`.",
+  })
+  value: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 57750,
+    description: 'Bir önceki haftanın değeri. Yalnız bitmiş haftada dolu.',
+  })
+  previousWeek: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: -2.2,
+    description: 'Önceki haftaya göre yüzde değişim, bir ondalık; önceki hafta pozitif olmalıdır.',
+  })
+  previousWeekGrowthPercent: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 10.9,
+    description:
+      'Seçilen haftaların ortalamasına göre yüzde değişim, bir ondalık. Yalnız bitmiş haftada dolu.',
+  })
+  averageGrowthPercent: number | null;
+}
+
+export class StoreDashboardWeekComparisonResponse {
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 0,
+    description: 'İş yeri numarası (`INVOICE.BRANCH`); `null` bütün mağazaların toplamıdır.',
+  })
+  storeNr: number | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 50900,
+    description:
+      'Seçilen bitmiş haftalardan değeri olanların ortalaması; oranlarda paylar ve paydalar önce toplanır.',
+  })
+  average: number | null;
+
+  @ApiProperty({ type: Number, example: 12, description: 'Ortalamaya giren hafta sayısı.' })
+  averageWeeks: number;
+
+  @ApiProperty({
+    type: () => StoreDashboardWeekResponse,
+    isArray: true,
+    description: 'Eskiden yeniye; son eleman içinde bulunulan haftadır.',
+  })
+  weeks: StoreDashboardWeekResponse[];
+}
+
+export class StoreDashboardWeekSeriesResponse {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    enum: ['TMT', 'USD'],
+    description: "Ciroda para birimi; diğer KPI'larda `null`.",
+  })
+  currency: string | null;
+
+  @ApiProperty({
+    type: () => StoreDashboardWeekComparisonResponse,
+    description: 'Bütün mağazalar.',
+  })
+  total: StoreDashboardWeekComparisonResponse;
+
+  @ApiProperty({
+    type: () => StoreDashboardWeekComparisonResponse,
+    isArray: true,
+    description: '`stores` listesindeki her mağaza, aynı sırayla.',
+  })
+  stores: StoreDashboardWeekComparisonResponse[];
+}
+
+export class StoreDashboardWeekKpiResponse {
+  @ApiProperty({ type: String, example: 'STORE_SALES' })
+  code: string;
+
+  @ApiProperty({ type: () => LocalizedTextResponse, description: 'Katalog adı (`#1 …`, ADR-060).' })
+  name: LocalizedTextResponse;
+
+  @ApiProperty({ type: String, enum: KPI_UNITS })
+  unit: KpiUnit;
+
+  @ApiProperty({ type: String, enum: STORE_DASHBOARD_AGGREGATIONS })
+  aggregation: StoreDashboardAggregation;
+
+  @ApiProperty({ type: () => StoreDashboardWeekSeriesResponse, isArray: true })
+  series: StoreDashboardWeekSeriesResponse[];
+}
+
+export class StoreDashboardWeeklyResponse {
+  @ApiProperty({
+    type: String,
+    example: '2026-11-16',
+    description: 'İçinde bulunulan haftanın pazartesisi (`BUSINESS_TIME_ZONE`).',
+  })
+  currentWeek: string;
+
+  @ApiProperty({
+    type: String,
+    example: '2026-11-09',
+    description: 'Son bitmiş haftanın pazartesisi.',
+  })
+  lastCompleteWeek: string;
+
+  @ApiProperty({ type: () => StoreDashboardRefreshResponse })
+  refresh: StoreDashboardRefreshResponse;
+
+  @ApiProperty({
+    type: () => StoreDashboardStoreResponse,
+    isArray: true,
+    description: 'Gösterilen haftalarda ya da karşılaştırma haftalarında değeri olan mağazalar.',
+  })
+  stores: StoreDashboardStoreResponse[];
+
+  @ApiProperty({
+    type: () => StoreDashboardWeekKpiResponse,
+    isArray: true,
+    description: 'Katalog sırasıyla #1–#7 ve #16.',
+  })
+  kpis: StoreDashboardWeekKpiResponse[];
 }

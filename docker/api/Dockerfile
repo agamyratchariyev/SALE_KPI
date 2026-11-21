@@ -1,3 +1,5 @@
+# Keep this stage identical to the `dependencies` stage in docker/web/Dockerfile:
+# BuildKit then reuses one cached `pnpm install` layer for both images.
 FROM node:24-alpine AS dependencies
 
 RUN npm install --global pnpm@12.3.4
@@ -8,8 +10,12 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
+COPY docker/install-dependencies.mjs docker/install-dependencies.mjs
 
-RUN pnpm install --frozen-lockfile
+# Optional: fewer parallel downloads for a proxy that drops extra connections.
+ARG PNPM_NETWORK_CONCURRENCY=
+# Retries over a bad connection and fails when pnpm skipped a native package (ADR-073).
+RUN node docker/install-dependencies.mjs
 
 FROM dependencies AS build
 

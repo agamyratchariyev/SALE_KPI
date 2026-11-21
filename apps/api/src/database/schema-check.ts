@@ -44,6 +44,9 @@ const REQUIRED_OBJECTS = [
   // Daily store visitor counts, the conversion KPI's denominator (ADR-043).
   { name: 'dbo.store_visitor_counts', type: 'U' },
   { name: 'dbo.store_kpi_month_values', type: 'U' },
+  // Weekly store values and the function that measures them (ADR-071).
+  { name: 'dbo.store_kpi_week_values', type: 'U' },
+  { name: 'dbo.kpi_store_week_values', type: 'IF' },
   { name: 'dbo.employee_salaries', type: 'U' },
   { name: 'dbo.audit_logs', type: 'U' },
   { name: 'dbo.stores', type: 'V' },

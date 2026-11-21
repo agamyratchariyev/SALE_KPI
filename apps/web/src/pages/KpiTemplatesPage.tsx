@@ -23,8 +23,12 @@ import { isBulkBarVisible, type BulkNotice } from '../lib/bulk';
 import { useSelection } from '../lib/use-selection';
 import type { KpiTemplateSummary } from '../types/api';
 import { confirmAction } from '../store/confirm-store';
+import { useKpiPlanListStore } from '../store/kpi-plan-list-store';
+import {
+  useKpiTemplateListStore,
+  type KpiTemplateStatusFilter,
+} from '../store/kpi-template-list-store';
 
-type StatusFilter = 'all' | 'active' | 'inactive';
 type BulkTemplateAction = 'activate' | 'deactivate' | 'delete';
 
 /** `KPI_TEMPLATE_IN_USE` names the templates a KPI plan was built from (ADR-040). */
@@ -103,6 +107,8 @@ function TemplateUsage({ template }: { template: KpiTemplateSummary }) {
   return (
     <Link
       to={`/kpi-plans?${params.toString()}`}
+      // The count promises all of this template's plans: a kept search must not narrow them.
+      onClick={() => useKpiPlanListStore.getState().setSearchInput('')}
       aria-label={t('kpiTemplates.openPlans', { name: template.name, count })}
       title={t('kpiTemplates.openPlans', { name: template.name, count })}
       className="flex min-h-[44px] flex-shrink-0 items-center"
@@ -175,9 +181,14 @@ function TemplateCard({
 export function KpiTemplatesPage() {
   const { t, locale } = useTranslation();
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('all');
+  // Search and status outlive the page, so leaving and coming back keeps them; a reload
+  // starts again with no search and the active templates (kpi-template-list-store).
+  const searchInput = useKpiTemplateListStore((state) => state.searchInput);
+  const setSearchInput = useKpiTemplateListStore((state) => state.setSearchInput);
+  const status = useKpiTemplateListStore((state) => state.status);
+  const setStatus = useKpiTemplateListStore((state) => state.setStatus);
+  // Starts from the kept text, so coming back does not wait for the debounce.
+  const [search, setSearch] = useState(() => searchInput.trim());
   const [notice, setNotice] = useState<BulkNotice | null>(null);
   // Copying asks how much the default targets change first (ADR-070).
   const [copyTargets, setCopyTargets] = useState<KpiTemplateSummary[] | null>(null);
@@ -393,7 +404,7 @@ export function KpiTemplatesPage() {
 
         <select
           value={status}
-          onChange={(event) => setStatus(event.target.value as StatusFilter)}
+          onChange={(event) => setStatus(event.target.value as KpiTemplateStatusFilter)}
           aria-label={t('kpiTemplates.statusLabel')}
           className="ml-auto h-10 rounded-lg border border-slate-300 bg-white px-2.5 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >

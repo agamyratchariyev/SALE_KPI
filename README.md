@@ -68,19 +68,18 @@ flowchart LR
 - Swagger / OpenAPI dokümantasyonu
 - n8n external JavaScript task runner
 - Playwright ve QuickChart entegrasyon altyapısı
-- Compose başlangıcında migration ve şema doğrulaması
+- API image'ı içinde çalışan migration ve şema doğrulama komutları
 
 ## Docker servisleri
 
-| Servis             | Görev                                             | Host erişimi                    |
-| ------------------ | ------------------------------------------------- | ------------------------------- |
-| `schema-check`     | Bekleyen migration ve zorunlu tablo/view kontrolü | Tek seferlik görev              |
-| `api`              | NestJS REST API                                   | `${API_PORT:-3000}`             |
-| `web`              | React production build + Nginx                    | `${WEB_PORT:-5173}`             |
-| `n8n`              | Otomasyon arayüzü ve task broker                  | `${N8N_PORT:-5678}`             |
-| `n8n-task-runners` | JavaScript Code node görevleri                    | Yalnız iç ağ                    |
-| `playwright`       | Uzak Chromium sunucusu                            | Yalnız iç ağ, `playwright:3000` |
-| `quickchart`       | Grafik üretim servisi                             | Yalnız iç ağ, `quickchart:3400` |
+| Servis             | Görev                            | Host erişimi                    |
+| ------------------ | -------------------------------- | ------------------------------- |
+| `api`              | NestJS REST API                  | `${API_PORT:-3000}`             |
+| `web`              | React production build + Nginx   | `${WEB_PORT:-5173}`             |
+| `n8n`              | Otomasyon arayüzü ve task broker | `${N8N_PORT:-5678}`             |
+| `n8n-task-runners` | JavaScript Code node görevleri   | Yalnız iç ağ                    |
+| `playwright`       | Uzak Chromium sunucusu           | Yalnız iç ağ, `playwright:3000` |
+| `quickchart`       | Grafik üretim servisi            | Yalnız iç ağ, `quickchart:3400` |
 
 ## Gereksinimler
 
@@ -164,12 +163,14 @@ TIGER_DB_PASSWORD=your_tiger_password
 
 ### 4. KPI_DB migration'larını çalıştırın
 
-API açılırken migration otomatik çalışmaz. İlk kurulumda migration'ları açıkça uygulayın:
+API açılırken migration otomatik çalışmaz ve Compose da kontrol etmez. İlk kurulumda ve yeni bir migration gelen her güncellemede migration'ları açıkça uygulayın:
 
 ```bash
-pnpm migration:show
-pnpm migration:run
+npm run migration:show
+npm run migration:run
 ```
+
+Bu komutlar API image'ını gerekirse build eder ve migration'ı onun içinde çalıştırır (`docker compose run --rm --no-deps --build api …`). Makinede Docker ve npm yeterlidir; `pnpm install` gerekmez. `npm run migration:check` aynı image'da şema kontrolünü çalıştırır: bekleyen migration, zorunlu tablo/view'lar, Tiger kaynağı ve rapor ayarları. Docker'sız yerel geliştirmede aynı komutlar `npm --prefix apps/api run migration:run` biçimindedir.
 
 Migration yalnızca `KPI_DB` üzerinde şema değişikliği yapar. ERP ve KPI rapor view'ları `TIGERDB` verisini cross-database ve salt okunur biçimde sunar; Tiger iş tablolarına yazılmaz.
 
@@ -180,7 +181,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-İlk build bağlantı hızına göre birkaç dakika sürebilir. `schema-check` başarıyla tamamlanmadan API, web ve n8n başlamaz.
+İlk build bağlantı hızına göre birkaç dakika sürebilir. Compose şemayı kontrol etmez: migration uygulanmadan başlatılan API eksik tablo ya da kolonda istek sırasında hata verir. Bu yüzden önce `npm run migration:run` çalıştırılır.
 
 Varsayılan adresler:
 
@@ -262,9 +263,9 @@ pnpm typecheck
 pnpm test
 pnpm build
 
-# Migration durumu
-pnpm migration:show
-pnpm migration:check
+# Migration durumu (API image'ı içinde)
+npm run migration:show
+npm run migration:check
 ```
 
 > [!CAUTION]
@@ -293,19 +294,19 @@ SQL Server verileri Docker volume'lerinde değildir. `KPI_DB` ve `TIGERDB` haric
 
 ## Sorun giderme
 
-### `schema-check` başarısız oluyor
+### API veritabanı hatası veriyor ya da şema şüpheli
 
-Önce logu inceleyin:
+Şema kontrolünü ve migration durumunu API image'ı içinde çalıştırın:
 
 ```bash
-docker compose logs schema-check
+npm run migration:check
+npm run migration:show
 ```
 
 En yaygın nedenler; erişilemeyen SQL Server, hatalı `.env` bilgileri, uygulanmamış migration veya eksik cross-database view'lardır. Gerekirse:
 
 ```bash
-pnpm migration:show
-pnpm migration:run
+npm run migration:run
 docker compose up -d --build
 ```
 
