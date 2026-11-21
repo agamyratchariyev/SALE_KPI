@@ -11,9 +11,22 @@ x-healthcheck-defaults: &healthcheck-defaults
   retries: 10
   start_period: 20s
 
+# Build-time network settings from .env (docs/DOCKER.md). A name without a value is passed
+# only when .env or the shell sets it. The proxy reaches npm/pnpm inside the builds and is
+# not written into the images or their cache keys.
+x-build-proxy-args: &build-proxy-args
+  HTTP_PROXY:
+  HTTPS_PROXY:
+
+# api and web share the pnpm install layer: they must get the same values (ADR-073).
+x-build-install-args: &build-install-args
+  <<: *build-proxy-args
+  PNPM_NETWORK_CONCURRENCY:
+
 x-api-build: &api-build
   context: .
   dockerfile: docker/api/Dockerfile
+  args: *build-install-args
 
 x-api-database-environment: &api-database-environment
   FIRM_NR: ${FIRM_NR:-1}
@@ -82,6 +95,7 @@ services:
       context: .
       dockerfile: docker/web/Dockerfile
       args:
+        <<: *build-install-args
         VITE_API_BASE_URL: ${API_BASE_URL:-http://localhost:${API_PORT:-3000}}
     ports:
       - '${WEB_PORT:-5173}:80'
@@ -131,6 +145,7 @@ services:
     build:
       context: .
       dockerfile: docker/n8n/Dockerfile.runners
+      args: *build-proxy-args
     image: retail-kpi-n8n-runners:2.35.7-local
     depends_on:
       n8n:
@@ -148,6 +163,7 @@ services:
     build:
       context: .
       dockerfile: docker/n8n/Dockerfile.playwright
+      args: *build-proxy-args
     image: retail-kpi-playwright:1.62.0-local
     ipc: host
 
