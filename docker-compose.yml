@@ -36,22 +36,12 @@ x-api-database-environment: &api-database-environment
   TIGER_SHARED_CUSTOMER_CODES: ${TIGER_SHARED_CUSTOMER_CODES:-}
 
 services:
-  schema-check:
-    build: *api-build
-    image: retail-kpi-api:local
-    command: ['node', 'apps/api/dist/database/schema-check.js']
-    environment: *api-database-environment
-    restart: 'no'
-    networks:
-      - retail-kpi
-
+  # Migrations and the schema check are explicit commands, not a startup gate (ADR-074):
+  # `npm run migration:run` / `migration:show` / `migration:check` run in this image.
   api:
     <<: *service-defaults
     build: *api-build
     image: retail-kpi-api:local
-    depends_on:
-      schema-check:
-        condition: service_completed_successfully
     environment:
       <<: *api-database-environment
       ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:?ACCESS_TOKEN_SECRET is required}
@@ -101,9 +91,6 @@ services:
 
   n8n:
     <<: *service-defaults
-    depends_on:
-      schema-check:
-        condition: service_completed_successfully
     build:
       context: .
       dockerfile: docker/n8n/Dockerfile
